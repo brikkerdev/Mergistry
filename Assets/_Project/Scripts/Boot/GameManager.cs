@@ -97,28 +97,28 @@ namespace Mergistry.Boot
             if (healthBarView != null) healthBarView.gameObject.SetActive(false);
 
             // ── Services ──────────────────────────────────────────────────────
-            if (!ServiceLocator.TryGet<DistillationService>(out var distillationService))
+            if (!ServiceLocator.TryGet<IDistillationService>(out var distillationService))
             {
                 distillationService = new DistillationService();
-                ServiceLocator.Register(distillationService);
+                ServiceLocator.Register<IDistillationService>(distillationService);
             }
-            if (!ServiceLocator.TryGet<CombatService>(out var combatService))
+            if (!ServiceLocator.TryGet<ICombatService>(out var combatService))
             {
                 combatService = new CombatService();
-                ServiceLocator.Register(combatService);
+                ServiceLocator.Register<ICombatService>(combatService);
             }
-            if (!ServiceLocator.TryGet<DamageService>(out var damageService))
+            if (!ServiceLocator.TryGet<IDamageService>(out var damageService))
             {
                 damageService = new DamageService();
-                ServiceLocator.Register(damageService);
+                ServiceLocator.Register<IDamageService>(damageService);
             }
-            if (!ServiceLocator.TryGet<AIService>(out var aiService))
+            if (!ServiceLocator.TryGet<IAIService>(out var aiService))
             {
                 aiService = new AIService(damageService);
-                ServiceLocator.Register(aiService);
+                ServiceLocator.Register<IAIService>(aiService);
             }
 
-            var mapGeneratorService = new MapGeneratorService(); // A4
+            IMapGeneratorService mapGeneratorService = new MapGeneratorService(); // A4
 
             // ── Models ────────────────────────────────────────────────────────
             _inventory = new InventoryModel();

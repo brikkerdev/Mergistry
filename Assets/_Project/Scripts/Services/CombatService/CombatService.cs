@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Mergistry.Services
 {
-    public class CombatService
+    public class CombatService : ICombatService
     {
         // ── Init ────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ namespace Mergistry.Services
                     break;
                 case 3:
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MushroomBomb,
-                                                           new Vector2Int(2, 4), hp: 3, bombTimer: 3));
+                                                           new Vector2Int(2, 4), hp: 2, bombTimer: 3));
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
                                                            new Vector2Int(3, 3), hp: 3));
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
@@ -79,7 +79,7 @@ namespace Mergistry.Services
                     break;
                 case 7:
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
-                                                           new Vector2Int(4, 4), hp: 3));
+                                                           new Vector2Int(4, 4), hp: 2));
                     break;
                 case 8:
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
@@ -93,7 +93,7 @@ namespace Mergistry.Services
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MirrorSlime,
                                                            new Vector2Int(3, 2), hp: 4));
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
-                                                           new Vector2Int(4, 4), hp: 3));
+                                                           new Vector2Int(4, 4), hp: 2));
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
                                                            new Vector2Int(2, 4), hp: 5));
                     break;
@@ -130,17 +130,28 @@ namespace Mergistry.Services
             var pos    = combat.Player.Position;
             var grid   = combat.Grid;
 
-            var offsets = new[]
-            {
-                new Vector2Int( 1,  0), new Vector2Int( 2,  0),
-                new Vector2Int(-1,  0), new Vector2Int(-2,  0),
-                new Vector2Int( 0,  1), new Vector2Int( 0,  2),
-                new Vector2Int( 0, -1), new Vector2Int( 0, -2),
-                new Vector2Int( 1,  2), new Vector2Int(-1,  2),
-                new Vector2Int( 1, -2), new Vector2Int(-1, -2),
-                new Vector2Int( 2,  1), new Vector2Int(-2,  1),
-                new Vector2Int( 2, -1), new Vector2Int(-2, -1),
-            };
+            // When the player is Slowed, restrict to Manhattan distance 1 only (no 2-cell or L-shape moves)
+            bool isSlowed = combat.Player.HasStatus(StatusEffectType.Slow);
+
+            var offsets = isSlowed
+                ? new[]
+                {
+                    new Vector2Int( 1,  0),
+                    new Vector2Int(-1,  0),
+                    new Vector2Int( 0,  1),
+                    new Vector2Int( 0, -1),
+                }
+                : new[]
+                {
+                    new Vector2Int( 1,  0), new Vector2Int( 2,  0),
+                    new Vector2Int(-1,  0), new Vector2Int(-2,  0),
+                    new Vector2Int( 0,  1), new Vector2Int( 0,  2),
+                    new Vector2Int( 0, -1), new Vector2Int( 0, -2),
+                    new Vector2Int( 1,  2), new Vector2Int(-1,  2),
+                    new Vector2Int( 1, -2), new Vector2Int(-1, -2),
+                    new Vector2Int( 2,  1), new Vector2Int(-2,  1),
+                    new Vector2Int( 2, -1), new Vector2Int(-2, -1),
+                };
 
             foreach (var off in offsets)
             {
@@ -258,7 +269,7 @@ namespace Mergistry.Services
         /// Applies zone DoT effects to all entities standing in Fire or Poison zones,
         /// and applies Slow status to entities standing in Water zones.
         /// </summary>
-        public void ApplyZoneEffects(CombatModel model, DamageService damageService)
+        public void ApplyZoneEffects(CombatModel model, IDamageService damageService)
         {
             foreach (var zone in model.Grid.Zones)
             {
@@ -315,7 +326,7 @@ namespace Mergistry.Services
         /// <summary>
         /// Ticks all status effect durations. Applies Poison DoT (1 damage/turn).
         /// </summary>
-        public void TickStatuses(CombatModel model, DamageService damageService)
+        public void TickStatuses(CombatModel model, IDamageService damageService)
         {
             // Player statuses
             TickEntityStatuses(model.Player.StatusEffects);

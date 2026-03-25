@@ -23,7 +23,8 @@
       "mcp__UnityMCP__manage_script",
       "mcp__UnityMCP__validate_script",
       "Bash(find 'C:/Unity Games/Mergistry/Assets/Scripts' -type f -name *.cs)",
-      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project' -type f -name *.cs)"
+      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project' -type f -name *.cs)",
+      "Bash(find 'C:/Unity Games/Mergistry/Assets' -name *.cs)"
     ]
   }
 }

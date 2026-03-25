@@ -11,7 +11,7 @@ namespace Mergistry.Services
     /// Pure logic service: AoE patterns, throw range, and damage application.
     /// A2: armor system — ArmorPoints absorb damage first.
     /// </summary>
-    public class DamageService
+    public class DamageService : IDamageService
     {
         // ── Throw range ─────────────────────────────────────────────────────────
 
@@ -38,52 +38,56 @@ namespace Mergistry.Services
             {
                 // ── MVP potions ───────────────────────────────────────────────
                 PotionType.Flame     => Cross(target, 1, grid),
-                PotionType.Stream    => Row(target.y, grid),
+                PotionType.Stream    => LineOfN(target, 4, grid),
                 PotionType.Poison    => Block2x2(target, grid),
-                PotionType.Steam     => Cross(target, 2, grid),
-                PotionType.Napalm    => Box3x3(target, grid),
-                PotionType.Acid      => Column(target.x, grid),
+                PotionType.Steam     => Block2x2(target, grid),
+                PotionType.Napalm    => Cross(target, 1, grid),
+                PotionType.Acid      => Block2x2(target, grid),
                 // ── A1: Lux/Umbra base brews ──────────────────────────────────
-                PotionType.Radiance  => Diamond(target, 2, grid),
-                PotionType.Gloom     => Box3x3(target, grid),
+                PotionType.Radiance  => Box3x3(target, grid),
+                PotionType.Gloom     => new List<Vector2Int> { target },
                 // ── A1: Lux recipe brews ──────────────────────────────────────
-                PotionType.Lightning => RowAndColumn(target, grid),
-                PotionType.Flare     => new List<Vector2Int> { target },
+                PotionType.Lightning => LineOfN(target, 5, grid),
+                PotionType.Flare     => Box3x3(target, grid),
                 PotionType.Spore     => Cross(target, 1, grid),
                 // ── A1: Umbra recipe brews ────────────────────────────────────
                 PotionType.Curse     => new List<Vector2Int> { target },
-                PotionType.Mist      => Row(target.y, grid),
-                PotionType.Miasma    => Block2x2(target, grid),
+                PotionType.Mist      => new List<Vector2Int> { target },
+                PotionType.Miasma    => Box3x3(target, grid),
                 PotionType.Chaos     => RandomAoE(target, grid),
                 _                    => new List<Vector2Int> { target }
             };
         }
 
         /// <summary>Base damage dealt by a potion at the given level.</summary>
-        public int GetDamage(PotionType type, int level) =>
-            type switch
+        public int GetDamage(PotionType type, int level)
+        {
+            float scale = level == 1 ? 1.0f : level == 2 ? 1.5f : 2.0f;
+            int baseDamage = type switch
             {
                 // ── MVP potions ───────────────────────────────────────────────
-                PotionType.Flame     => 2 * level,
-                PotionType.Stream    => 1 * level,
-                PotionType.Poison    => 2 * level,
-                PotionType.Steam     => 1 * level,
-                PotionType.Napalm    => 3 * level,
-                PotionType.Acid      => 2 * level,
+                PotionType.Flame     => 3,
+                PotionType.Stream    => 3,
+                PotionType.Poison    => 2,
+                PotionType.Steam     => 0,
+                PotionType.Napalm    => 3,
+                PotionType.Acid      => 2,
                 // ── A1: Lux/Umbra base brews ──────────────────────────────────
-                PotionType.Radiance  => 2 * level,
-                PotionType.Gloom     => 2 * level,
+                PotionType.Radiance  => 1,
+                PotionType.Gloom     => 5,
                 // ── A1: Lux recipe brews ──────────────────────────────────────
-                PotionType.Lightning => 3 * level,
-                PotionType.Flare     => 4 * level,
-                PotionType.Spore     => 1 * level,
+                PotionType.Lightning => 3,
+                PotionType.Flare     => 3,
+                PotionType.Spore     => 3,
                 // ── A1: Umbra recipe brews ────────────────────────────────────
-                PotionType.Curse     => 3 * level,
-                PotionType.Mist      => 1 * level,
-                PotionType.Miasma    => 2 * level,
-                PotionType.Chaos     => Random.Range(1, 5) * level,
-                _                    => level
+                PotionType.Curse     => 0,
+                PotionType.Mist      => 0,
+                PotionType.Miasma    => 2,
+                PotionType.Chaos     => Random.Range(1, 5),
+                _                    => 1
             };
+            return Mathf.RoundToInt(baseDamage * scale);
+        }
 
         // ── Damage application ──────────────────────────────────────────────────
 
@@ -206,6 +210,23 @@ namespace Mergistry.Services
             for (int dy = -radius; dy <= radius; dy++)
                 if (Mathf.Abs(dx) + Mathf.Abs(dy) <= radius)
                     AddIfInBounds(cells, new Vector2Int(center.x + dx, center.y + dy), grid);
+            return cells;
+        }
+
+        /// <summary>
+        /// N cells along the row centered on target, clamped to grid bounds.
+        /// Used for Stream (4 cells) and Lightning (5 cells).
+        /// </summary>
+        private static List<Vector2Int> LineOfN(Vector2Int target, int count, GridModel grid)
+        {
+            var cells = new List<Vector2Int>();
+            int half  = count / 2;
+            int startX = target.x - half;
+            for (int i = 0; i < count; i++)
+            {
+                var c = new Vector2Int(startX + i, target.y);
+                AddIfInBounds(cells, c, grid);
+            }
             return cells;
         }
 

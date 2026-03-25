@@ -17,7 +17,7 @@ namespace Mergistry.GameStates
     public class MapState : IGameState
     {
         private readonly MapScreen            _mapScreen;
-        private readonly MapGeneratorService  _mapGenerator;
+        private readonly IMapGeneratorService  _mapGenerator;
         private readonly GameStateMachine     _fsm;
         private readonly RunModel             _runModel;
         private readonly FadeView             _fadeView;
@@ -30,8 +30,8 @@ namespace Mergistry.GameStates
         private bool _abortEnter; // set true when Enter() triggers an immediate state change
 
         public MapState(
-            MapScreen           mapScreen,
-            MapGeneratorService mapGenerator,
+            MapScreen            mapScreen,
+            IMapGeneratorService mapGenerator,
             GameStateMachine    fsm,
             RunModel            runModel,
             FadeView            fadeView,

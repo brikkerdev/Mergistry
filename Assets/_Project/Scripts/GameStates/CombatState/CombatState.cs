@@ -21,9 +21,9 @@ namespace Mergistry.GameStates
         private readonly GridView              _gridView;
         private readonly PlayerView            _playerView;
         private readonly CombatInputController _inputController;
-        private readonly CombatService         _combatService;
-        private readonly DamageService         _damageService;
-        private readonly AIService             _aiService;
+        private readonly ICombatService        _combatService;
+        private readonly IDamageService        _damageService;
+        private readonly IAIService            _aiService;
         private readonly InventoryView         _inventoryView;
         private readonly FadeView              _fadeView;
         private readonly EffectView            _effectView;
@@ -52,9 +52,9 @@ namespace Mergistry.GameStates
             GridView              gridView,
             PlayerView            playerView,
             CombatInputController inputController,
-            CombatService         combatService,
-            DamageService         damageService,
-            AIService             aiService,
+            ICombatService        combatService,
+            IDamageService        damageService,
+            IAIService            aiService,
             InventoryView         inventoryView,
             FadeView              fadeView,
             EffectView            effectView,
@@ -123,7 +123,7 @@ namespace Mergistry.GameStates
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 2);
                     break;
                 case EnemyType.MushroomBomb:
-                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 3, bombTimer: 3);
+                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 2, bombTimer: 3);
                     break;
                 case EnemyType.MagnetGolem:
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 6);
@@ -135,7 +135,7 @@ namespace Mergistry.GameStates
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 4);
                     break;
                 case EnemyType.Phantom:
-                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 3);
+                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 2);
                     break;
                 case EnemyType.Necromancer:
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 5);
@@ -225,10 +225,11 @@ namespace Mergistry.GameStates
             _inventoryView.SetCombatMode(true);
             _inventoryView.RefreshCombat(_inventory, -1);
 
-            _inputController.Initialize(_gridView, _playerView, _model, _combatService);
-            _inputController.OnMoveRequested = OnMoveRequested;
-            _inputController.OnGridTapped    = OnGridTapped;
-            _inputController.OnPushRequested = OnPushRequested;
+            _inputController.Initialize(_gridView, _playerView, _model);
+            _inputController.GetValidMovesFunc = model => _combatService.GetValidMoves(model);
+            _inputController.OnMoveRequested   = OnMoveRequested;
+            _inputController.OnGridTapped      = OnGridTapped;
+            _inputController.OnPushRequested   = OnPushRequested;
             _inputController.SetActive(true);
 
             _inventoryView.OnSlotClicked += OnSlotClicked;
@@ -264,9 +265,10 @@ namespace Mergistry.GameStates
             EventBus.Unsubscribe<EnemyRevivedEvent>(OnEnemyRevived); // A3
 
             _inputController.SetActive(false);
-            _inputController.OnMoveRequested = null;
-            _inputController.OnGridTapped    = null;
-            _inputController.OnPushRequested = null;
+            _inputController.GetValidMovesFunc = null;
+            _inputController.OnMoveRequested   = null;
+            _inputController.OnGridTapped      = null;
+            _inputController.OnPushRequested   = null;
 
             _inventoryView.OnSlotClicked -= OnSlotClicked;
             _skipButton.OnClicked        -= OnSkipTurn;

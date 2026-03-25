@@ -28,7 +28,7 @@ namespace Mergistry.Boot
         {
             ServiceLocator.Clear();
             EventBus.Clear();
-            ServiceLocator.Register(new DistillationService());
+            ServiceLocator.Register<IDistillationService>(new DistillationService());
         }
     }
 }

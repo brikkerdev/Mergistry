@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Mergistry.Core;
 using Mergistry.Events;
 using Mergistry.Models.Combat;
-using Mergistry.Services;
 using UnityEngine;
 
 namespace Mergistry.Views.Combat
@@ -22,10 +21,12 @@ namespace Mergistry.Views.Combat
         private const float MinDragDelta     = 0.25f;
         private const float TapThreshold     = 0.15f;
 
-        private GridView      _gridView;
-        private PlayerView    _playerView;
-        private CombatModel   _model;
-        private CombatService _service;
+        private GridView   _gridView;
+        private PlayerView _playerView;
+        private CombatModel _model;
+
+        // Delegate set by CombatState to provide valid moves without a direct service reference.
+        public Func<CombatModel, List<Vector2Int>> GetValidMovesFunc;
 
         private bool             _active;
         private Vector3          _anyDragStart;
@@ -47,13 +48,11 @@ namespace Mergistry.Views.Combat
 
         // ── Init ──────────────────────────────────────────────────────────────
 
-        public void Initialize(GridView gridView, PlayerView playerView,
-            CombatModel model, CombatService service)
+        public void Initialize(GridView gridView, PlayerView playerView, CombatModel model)
         {
             _gridView   = gridView;
             _playerView = playerView;
             _model      = model;
-            _service    = service;
         }
 
         public void SetActive(bool active)
@@ -106,7 +105,7 @@ namespace Mergistry.Views.Combat
             _tracking        = true;
             _wasMoveTracking = true;
             _dragStart       = e.WorldPosition;
-            _validMoves      = _service.GetValidMoves(_model);
+            _validMoves      = GetValidMovesFunc?.Invoke(_model) ?? new List<Vector2Int>();
             _gridView.SetHighlights(_validMoves);
         }
 

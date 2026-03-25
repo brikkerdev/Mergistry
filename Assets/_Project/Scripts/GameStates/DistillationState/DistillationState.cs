@@ -18,7 +18,7 @@ namespace Mergistry.GameStates
 
         private readonly BoardView           _boardView;
         private readonly BoardDragController _dragController;
-        private readonly DistillationService _distillationService;
+        private readonly IDistillationService _distillationService;
         private readonly ActionCounterView   _actionCounter;
         private readonly InventoryView       _inventoryView;
         private readonly SlotReplacePopup    _replacePopup;
@@ -37,9 +37,9 @@ namespace Mergistry.GameStates
         private Queue<DistillationService.BrewEntry> _pendingBrews;
 
         public DistillationState(
-            BoardView           boardView,
-            BoardDragController dragController,
-            DistillationService distillationService,
+            BoardView            boardView,
+            BoardDragController  dragController,
+            IDistillationService distillationService,
             ActionCounterView   actionCounter,
             InventoryView       inventoryView,
             SlotReplacePopup    replacePopup,
@@ -72,7 +72,11 @@ namespace Mergistry.GameStates
             _boardView.gameObject.SetActive(true);
             _boardView.Initialize(_currentBoard);
 
-            _dragController.Initialize(_boardView, _currentBoard, _distillationService, OnActionUsed);
+            _dragController.Initialize(_boardView, _currentBoard, OnActionUsed);
+            _dragController.CanMergeFunc     = (board, fx, fy, tx, ty) => _distillationService.CanMerge(board, fx, fy, tx, ty);
+            _dragController.PerformMergeFunc = (board, fx, fy, tx, ty) => _distillationService.PerformMerge(board, fx, fy, tx, ty);
+            _dragController.CanInfuseFunc    = (board, fx, fy, tx, ty) => _distillationService.CanInfuse(board, fx, fy, tx, ty);
+            _dragController.PerformInfuseFunc = (board, fx, fy, tx, ty) => _distillationService.PerformInfuse(board, fx, fy, tx, ty);
             _dragController.SetActive(true);
 
             _actionCounter.gameObject.SetActive(true);
@@ -123,7 +127,7 @@ namespace Mergistry.GameStates
             if (_currentBoard == null) return;
             _currentBoard = _distillationService.GenerateBoard(_seed++, _runModel.CurrentFloor);
             _boardView.Initialize(_currentBoard);
-            _dragController.Initialize(_boardView, _currentBoard, _distillationService, OnActionUsed);
+            _dragController.Initialize(_boardView, _currentBoard, OnActionUsed);
             _actionsRemaining = MaxActions;
             _actionCounter.Refresh(_actionsRemaining);
             Debug.Log("[DEBUG] Board regenerated.");
@@ -134,7 +138,7 @@ namespace Mergistry.GameStates
             _runModel.CurrentFloor = floor;
             _currentBoard = _distillationService.GenerateBoard(_seed++, floor);
             _boardView.Initialize(_currentBoard);
-            _dragController.Initialize(_boardView, _currentBoard, _distillationService, OnActionUsed);
+            _dragController.Initialize(_boardView, _currentBoard, OnActionUsed);
             _actionsRemaining = MaxActions;
             _actionCounter.Refresh(_actionsRemaining);
             Debug.Log($"[DEBUG] Switched to floor {floor} — board regenerated.");

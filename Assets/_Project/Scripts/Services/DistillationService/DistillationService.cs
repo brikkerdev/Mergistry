@@ -5,7 +5,7 @@ using Mergistry.Models;
 
 namespace Mergistry.Services
 {
-    public class DistillationService
+    public class DistillationService : IDistillationService
     {
         // Element pools per floor: floor 0 = 3 elements, floor 1 = 4, floor 2+ = 5
         private static readonly ElementType[] FloorElements0 =
@@ -20,30 +20,97 @@ namespace Mergistry.Services
         public BoardModel GenerateBoard(int seed = 0, int floor = 0)
         {
             var elements = floor switch { 0 => FloorElements0, 1 => FloorElements1, _ => FloorElements2 };
-            var board    = new BoardModel();
             var rng      = new Random(seed);
 
-            var positions = new List<(int x, int y)>();
-            for (int x = 0; x < BoardModel.Size; x++)
-                for (int y = 0; y < BoardModel.Size; y++)
-                    positions.Add((x, y));
+            const int maxAttempts = 100;
+            const int minSamePairs = 3;
 
-            // Fisher-Yates shuffle
-            for (int i = positions.Count - 1; i > 0; i--)
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                int j = rng.Next(i + 1);
-                (positions[i], positions[j]) = (positions[j], positions[i]);
+                var board = new BoardModel();
+
+                var positions = new List<(int x, int y)>();
+                for (int x = 0; x < BoardModel.Size; x++)
+                    for (int y = 0; y < BoardModel.Size; y++)
+                        positions.Add((x, y));
+
+                // Fisher-Yates shuffle
+                for (int i = positions.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    (positions[i], positions[j]) = (positions[j], positions[i]);
+                }
+
+                // Distribute elements evenly: 16 cells / N elements (cycle via modulo)
+                for (int i = 0; i < positions.Count; i++)
+                {
+                    var elem   = elements[i % elements.Length];
+                    var (x, y) = positions[i];
+                    board.Set(x, y, CellContent.Ingredient(elem));
+                }
+
+                // GDD guarantee: at least 3 pairs of adjacent same-element ingredients
+                if (CountSameElementAdjacentPairs(board) >= minSamePairs)
+                    return board;
             }
 
-            // Distribute elements evenly: 16 cells / N elements (cycle via modulo)
-            for (int i = 0; i < positions.Count; i++)
+            // Fallback: return last attempted board if no valid layout found within limit
             {
-                var elem   = elements[i % elements.Length];
-                var (x, y) = positions[i];
-                board.Set(x, y, CellContent.Ingredient(elem));
+                var board = new BoardModel();
+                var positions = new List<(int x, int y)>();
+                for (int x = 0; x < BoardModel.Size; x++)
+                    for (int y = 0; y < BoardModel.Size; y++)
+                        positions.Add((x, y));
+
+                for (int i = 0; i < positions.Count; i++)
+                {
+                    var elem   = elements[i % elements.Length];
+                    var (x, y) = positions[i];
+                    board.Set(x, y, CellContent.Ingredient(elem));
+                }
+
+                return board;
+            }
+        }
+
+        /// <summary>
+        /// Counts adjacent pairs (horizontal and vertical) where both cells are
+        /// ingredients sharing the same ElementType. Used to validate the GDD
+        /// guarantee of at least 3 same-element merge pairs per board.
+        /// </summary>
+        private static int CountSameElementAdjacentPairs(BoardModel board)
+        {
+            int count = 0;
+            int size  = BoardModel.Size;
+
+            for (int x = 0; x < size; x++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    var cell = board.Get(x, y);
+                    if (cell.Type != CellContentType.Ingredient) continue;
+
+                    // Check right neighbour
+                    if (x + 1 < size)
+                    {
+                        var right = board.Get(x + 1, y);
+                        if (right.Type == CellContentType.Ingredient &&
+                            right.ElementType == cell.ElementType)
+                            count++;
+                    }
+
+                    // Check upper neighbour
+                    if (y + 1 < size)
+                    {
+                        var up = board.Get(x, y + 1);
+                        if (up.Type == CellContentType.Ingredient &&
+                            up.ElementType == cell.ElementType)
+                            count++;
+                    }
+                }
             }
 
-            return board;
+            return count;
         }
 
         // ── Merge ────────────────────────────────────────────────────────────

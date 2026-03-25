@@ -1,8 +1,8 @@
 using System;
 using Mergistry.Core;
+using Mergistry.Data;
 using Mergistry.Events;
 using Mergistry.Models;
-using Mergistry.Services;
 using UnityEngine;
 
 namespace Mergistry.Views.Board
@@ -10,25 +10,31 @@ namespace Mergistry.Views.Board
     /// <summary>
     /// Handles drag-and-drop interactions on the board.
     /// M2: performs merge and infuse; decrements action counter via callback.
+    ///
+    /// DistillationState wires up CanMergeFunc/PerformMergeFunc/CanInfuseFunc/PerformInfuseFunc
+    /// so this View never holds a direct reference to DistillationService.
     /// </summary>
     public class BoardDragController : MonoBehaviour
     {
-        private BoardView            _boardView;
-        private BoardModel           _boardModel;
-        private DistillationService  _distillationService;
-        private Action               _onActionUsed;
+        private BoardView  _boardView;
+        private BoardModel _boardModel;
+        private Action     _onActionUsed;
+
+        // Delegates set by DistillationState — keep this View decoupled from services.
+        public Func<BoardModel, int, int, int, int, bool>                          CanMergeFunc;
+        public Func<BoardModel, int, int, int, int, (PotionType potionType, ElementType element)> PerformMergeFunc;
+        public Func<BoardModel, int, int, int, int, bool>                          CanInfuseFunc;
+        public Func<BoardModel, int, int, int, int, int>                           PerformInfuseFunc;
 
         private IngredientView _dragging;
         private int            _fromX, _fromY;
         private bool           _active;
 
-        public void Initialize(BoardView boardView, BoardModel boardModel,
-            DistillationService distillationService, Action onActionUsed)
+        public void Initialize(BoardView boardView, BoardModel boardModel, Action onActionUsed)
         {
-            _boardView           = boardView;
-            _boardModel          = boardModel;
-            _distillationService = distillationService;
-            _onActionUsed        = onActionUsed;
+            _boardView    = boardView;
+            _boardModel   = boardModel;
+            _onActionUsed = onActionUsed;
         }
 
         public void SetActive(bool active)
@@ -83,9 +89,9 @@ namespace Mergistry.Views.Board
             if (_boardView.TryGetGridPosition(e.WorldPosition, out int toX, out int toY) &&
                 IsNeighbor(_fromX, _fromY, toX, toY))
             {
-                if (_distillationService.CanMerge(_boardModel, _fromX, _fromY, toX, toY))
+                if (CanMergeFunc != null && CanMergeFunc(_boardModel, _fromX, _fromY, toX, toY))
                 {
-                    var (potionType, element) = _distillationService.PerformMerge(_boardModel, _fromX, _fromY, toX, toY);
+                    var (potionType, element) = PerformMergeFunc(_boardModel, _fromX, _fromY, toX, toY);
                     _boardView.RemoveIngredient(_fromX, _fromY);
                     _boardView.RemoveIngredient(toX, toY);
                     _boardView.PlaceBrew(toX, toY, potionType, element, 1);
@@ -95,9 +101,9 @@ namespace Mergistry.Views.Board
                     return;
                 }
 
-                if (_distillationService.CanInfuse(_boardModel, _fromX, _fromY, toX, toY))
+                if (CanInfuseFunc != null && CanInfuseFunc(_boardModel, _fromX, _fromY, toX, toY))
                 {
-                    int newLevel = _distillationService.PerformInfuse(_boardModel, _fromX, _fromY, toX, toY);
+                    int newLevel = PerformInfuseFunc(_boardModel, _fromX, _fromY, toX, toY);
                     _boardView.RemoveIngredient(_fromX, _fromY);
                     _boardView.UpgradeBrew(toX, toY, newLevel);
                     _dragging = null;

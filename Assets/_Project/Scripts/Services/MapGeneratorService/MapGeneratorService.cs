@@ -11,7 +11,7 @@ namespace Mergistry.Services
     /// Structure: 4 content rows + 1 boss row.
     /// Guarantees: 1 Elite (rows 1+), 1–2 Events (any row), 1 Boss (last row).
     /// </summary>
-    public class MapGeneratorService
+    public class MapGeneratorService : IMapGeneratorService
     {
         // Number of nodes per content row (boss row always has 1)
         private static readonly int[] RowSizes = { 2, 3, 2, 2 };
