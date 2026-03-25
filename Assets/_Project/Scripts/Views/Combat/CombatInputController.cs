@@ -11,23 +11,16 @@ namespace Mergistry.Views.Combat
     /// <summary>
     /// Handles swipe input on the combat grid.
     ///
-    /// Movement: a drag starting near the player shows a ghost at the nearest valid
-    /// destination; releasing confirms the move via <see cref="OnMoveRequested"/>.
-    ///
-    /// Tap: a very short drag (< TapThreshold) that did NOT start a movement swipe
-    /// fires <see cref="OnGridTapped"/> with the tapped grid cell.
-    /// CombatState uses this to trigger potion throws.
+    /// Movement:  drag starting near player → ghost preview → OnMoveRequested.
+    /// Tap:       short drag not near player → OnGridTapped.
+    /// Push:      drag starting near an adjacent enemy → OnPushRequested(entityId, direction).
     /// </summary>
     public class CombatInputController : MonoBehaviour
     {
-        // Max world-space distance from player centre to start tracking a move drag.
         private const float ActivationRadius = 1.0f;
-        // Max world-space distance from a candidate cell to snap the ghost to it.
-        private const float SnapRadius = 1.2f;
-        // Minimum drag length before we start snapping.
-        private const float MinDragDelta = 0.25f;
-        // Maximum total drag distance to count as a tap.
-        private const float TapThreshold = 0.15f;
+        private const float SnapRadius       = 1.2f;
+        private const float MinDragDelta     = 0.25f;
+        private const float TapThreshold     = 0.15f;
 
         private GridView      _gridView;
         private PlayerView    _playerView;
@@ -35,15 +28,22 @@ namespace Mergistry.Views.Combat
         private CombatService _service;
 
         private bool             _active;
-        private bool             _tracking;        // move-drag is in progress
-        private bool             _wasMoveTracking; // did this drag start as a move drag?
-        private Vector3          _anyDragStart;    // world pos of the most recent drag start
-        private Vector3          _dragStart;       // world pos when move tracking began
+        private Vector3          _anyDragStart;
+
+        // Move tracking
+        private bool             _tracking;
+        private bool             _wasMoveTracking;
+        private Vector3          _dragStart;
         private Vector2Int?      _ghostTarget;
         private List<Vector2Int> _validMoves;
 
-        public Action<Vector2Int> OnMoveRequested;
-        public Action<Vector2Int> OnGridTapped;
+        // Push tracking
+        private int     _pushTargetId = -1;  // EntityId of enemy being pushed
+        private Vector3 _pushDragStart;
+
+        public Action<Vector2Int>      OnMoveRequested;
+        public Action<Vector2Int>      OnGridTapped;
+        public Action<int, Vector2Int> OnPushRequested; // (entityId, direction)
 
         // ── Init ──────────────────────────────────────────────────────────────
 
@@ -82,12 +82,23 @@ namespace Mergistry.Views.Combat
 
         private void OnDragStart(DragStartEvent e)
         {
-            // Always record tap start
             _anyDragStart    = e.WorldPosition;
             _wasMoveTracking = false;
+            _pushTargetId    = -1;
 
-            // Movement tracking: only when near player and player hasn't moved yet
-            if (!_active || _model == null || _model.Player.HasMoved) return;
+            if (!_active || _model == null) return;
+
+            // --- Push: drag starts near an adjacent living enemy ---
+            var adjacentEnemy = FindAdjacentEnemyAt(e.WorldPosition);
+            if (adjacentEnemy != null)
+            {
+                _pushTargetId    = adjacentEnemy.EntityId;
+                _pushDragStart   = e.WorldPosition;
+                return; // push takes priority over move
+            }
+
+            // --- Move: drag starts near player and player hasn't moved ---
+            if (_model.Player.HasMoved) return;
 
             var playerWorld = _gridView.GridToWorld(_model.Player.Position);
             if (Vector3.Distance(e.WorldPosition, playerWorld) > ActivationRadius) return;
@@ -101,6 +112,8 @@ namespace Mergistry.Views.Combat
 
         private void OnDragUpdate(DragUpdateEvent e)
         {
+            if (_pushTargetId >= 0) return; // no visual feedback during push drag
+
             if (!_tracking) return;
 
             if (Vector3.Distance(e.WorldPosition, _dragStart) < MinDragDelta)
@@ -127,6 +140,20 @@ namespace Mergistry.Views.Combat
         {
             bool wasTap = Vector3.Distance(e.WorldPosition, _anyDragStart) < TapThreshold;
 
+            // --- Push release ---
+            if (_pushTargetId >= 0)
+            {
+                var delta = e.WorldPosition - _pushDragStart;
+                if (delta.magnitude >= MinDragDelta)
+                {
+                    var dir = ToCardinalDirection(delta);
+                    OnPushRequested?.Invoke(_pushTargetId, dir);
+                }
+                _pushTargetId = -1;
+                return;
+            }
+
+            // --- Move release ---
             if (_tracking)
             {
                 _tracking = false;
@@ -139,7 +166,7 @@ namespace Mergistry.Views.Combat
                 _ghostTarget = null;
             }
 
-            // Tap detection: short drag that was NOT a move swipe
+            // --- Tap ---
             if (_active && wasTap && !_wasMoveTracking)
             {
                 var cell = _gridView?.WorldToGrid(e.WorldPosition);
@@ -149,6 +176,27 @@ namespace Mergistry.Views.Combat
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns a living enemy that is adjacent to the player AND
+        /// whose world position is within ActivationRadius of dragPos.
+        /// </summary>
+        private EnemyCombatModel FindAdjacentEnemyAt(Vector3 dragPos)
+        {
+            if (_model == null) return null;
+            foreach (var enemy in _model.Enemies)
+            {
+                if (enemy.IsDead) continue;
+
+                int dist = Manhattan(enemy.Position, _model.Player.Position);
+                if (dist > 1) continue; // not adjacent
+
+                var enemyWorld = _gridView.GridToWorld(enemy.Position);
+                if (Vector3.Distance(dragPos, enemyWorld) <= ActivationRadius)
+                    return enemy;
+            }
+            return null;
+        }
 
         private Vector2Int? FindClosestValid(Vector3 worldPos)
         {
@@ -168,13 +216,26 @@ namespace Mergistry.Views.Combat
             return best;
         }
 
+        /// <summary>Converts a 2D delta into one of the 4 cardinal directions.</summary>
+        private static Vector2Int ToCardinalDirection(Vector2 delta)
+        {
+            if (Mathf.Abs(delta.x) >= Mathf.Abs(delta.y))
+                return delta.x > 0 ? Vector2Int.right : Vector2Int.left;
+            else
+                return delta.y > 0 ? Vector2Int.up : Vector2Int.down;
+        }
+
         private void CancelTracking()
         {
             _tracking        = false;
             _wasMoveTracking = false;
             _ghostTarget     = null;
+            _pushTargetId    = -1;
             _playerView?.HideGhost();
             _gridView?.ClearHighlights();
         }
+
+        private static int Manhattan(Vector2Int a, Vector2Int b) =>
+            Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
     }
 }

@@ -109,14 +109,27 @@ namespace Mergistry.GameStates
             // Debug: F1/F2/F3 force-switch floor and regenerate board
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (kb[Key.F1].wasPressedThisFrame) SetDebugFloor(0);
-            if (kb[Key.F2].wasPressedThisFrame) SetDebugFloor(1);
-            if (kb[Key.F3].wasPressedThisFrame) SetDebugFloor(2);
+            if (kb[Key.F1].wasPressedThisFrame) Debug_SetFloor(0);
+            if (kb[Key.F2].wasPressedThisFrame) Debug_SetFloor(1);
+            if (kb[Key.F3].wasPressedThisFrame) Debug_SetFloor(2);
 #endif
         }
 
-#if UNITY_EDITOR
-        private void SetDebugFloor(int floor)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool Debug_IsActive => _currentBoard != null;
+
+        public void Debug_RegenerateBoard()
+        {
+            if (_currentBoard == null) return;
+            _currentBoard = _distillationService.GenerateBoard(_seed++, _runModel.CurrentFloor);
+            _boardView.Initialize(_currentBoard);
+            _dragController.Initialize(_boardView, _currentBoard, _distillationService, OnActionUsed);
+            _actionsRemaining = MaxActions;
+            _actionCounter.Refresh(_actionsRemaining);
+            Debug.Log("[DEBUG] Board regenerated.");
+        }
+
+        public void Debug_SetFloor(int floor)
         {
             _runModel.CurrentFloor = floor;
             _currentBoard = _distillationService.GenerateBoard(_seed++, floor);
@@ -126,6 +139,16 @@ namespace Mergistry.GameStates
             _actionCounter.Refresh(_actionsRemaining);
             Debug.Log($"[DEBUG] Switched to floor {floor} — board regenerated.");
         }
+
+        public void Debug_AddActions(int count)
+        {
+            if (_currentBoard == null) return;
+            _actionsRemaining += count;
+            _actionCounter.Refresh(_actionsRemaining);
+        }
+
+        public int Debug_GetActionsRemaining() => _actionsRemaining;
+        public int Debug_GetCurrentFloor()     => _runModel.CurrentFloor;
 #endif
 
         // ── Book button ──────────────────────────────────────────────────────

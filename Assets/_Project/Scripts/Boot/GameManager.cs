@@ -18,7 +18,24 @@ namespace Mergistry.Boot
     /// </summary>
     public class GameManager : MonoBehaviour
     {
-        private GameStateMachine _fsm;
+        private GameStateMachine  _fsm;
+        private RunModel          _runModel;
+        private InventoryModel    _inventory;
+        private CombatState       _combatState;
+        private DistillationState _distillationState;
+        private MenuState         _menuState;
+        private ResultState       _resultState;
+
+        // ── Dev access ────────────────────────────────────────────────────────
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public GameStateMachine  DevFSM               => _fsm;
+        public RunModel          DevRunModel           => _runModel;
+        public InventoryModel    DevInventory          => _inventory;
+        public CombatState       DevCombatState        => _combatState;
+        public DistillationState DevDistillationState  => _distillationState;
+        public MenuState         DevMenuState          => _menuState;
+        public ResultState       DevResultState        => _resultState;
+#endif
 
         private void Awake()
         {
@@ -111,41 +128,40 @@ namespace Mergistry.Boot
             }
 
             // ── Models ────────────────────────────────────────────────────────
-            var inventory = new InventoryModel();
-            var runModel  = new RunModel();
-            inventoryView.Refresh(inventory);
+            _inventory = new InventoryModel();
+            _runModel  = new RunModel();
+            inventoryView.Refresh(_inventory);
 
             // ── BookScreen (created programmatically, no scene GO needed) ─────
             var bookScreenGo = new GameObject("BookScreen");
             var bookScreen   = bookScreenGo.AddComponent<BookScreen>();
 
             // ── States ────────────────────────────────────────────────────────
-            var combatState = new CombatState(
+            _combatState = new CombatState(
                 gridView, playerView, combatInput,
                 combatService, damageService, aiService,
                 inventoryView, fadeView,
                 effectView, skipButton,
-                inventory);
+                _inventory);
 
-            var distillationState = new DistillationState(
+            _distillationState = new DistillationState(
                 boardView, dragController, distillationService,
-                actionCounter, inventoryView, replacePopup, inventory,
-                _fsm, combatState, fadeView,
-                runModel, bookScreen);
+                actionCounter, inventoryView, replacePopup, _inventory,
+                _fsm, _combatState, fadeView,
+                _runModel, bookScreen);
 
-            var menuState = new MenuState(menuScreenView, _fsm, distillationState, fadeView);
+            _menuState = new MenuState(menuScreenView, _fsm, _distillationState, fadeView);
 
-            ResultState resultState = null;
             if (resultScreenView != null)
             {
-                resultState = new ResultState(resultScreenView, fadeView, _fsm, runModel, inventory);
-                resultState.SetNavigationTargets(menuState, distillationState);
+                _resultState = new ResultState(resultScreenView, fadeView, _fsm, _runModel, _inventory);
+                _resultState.SetNavigationTargets(_menuState, _distillationState);
             }
 
             // Wire M6 flow dependencies into CombatState
-            combatState.SetFlowDependencies(_fsm, runModel, healthBarView, distillationState, resultState);
+            _combatState.SetFlowDependencies(_fsm, _runModel, healthBarView, _distillationState, _resultState);
 
-            _fsm.ChangeState(menuState);
+            _fsm.ChangeState(_menuState);
             Debug.Log("[GameManager] FSM started → MenuState");
         }
 

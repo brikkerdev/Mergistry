@@ -71,6 +71,7 @@
     <Compile Include="Assets\_Project\Scripts\Data\PotionDatabase.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Screens\MenuScreenView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\IntentType.cs" />
+    <Compile Include="Assets\_Project\Scripts\Debug\DevPanel.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\CellContent.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\RunModel.cs" />

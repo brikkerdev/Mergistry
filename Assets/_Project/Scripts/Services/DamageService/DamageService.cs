@@ -9,6 +9,7 @@ namespace Mergistry.Services
 {
     /// <summary>
     /// Pure logic service: AoE patterns, throw range, and damage application.
+    /// A2: armor system — ArmorPoints absorb damage first.
     /// </summary>
     public class DamageService
     {
@@ -86,10 +87,27 @@ namespace Mergistry.Services
 
         // ── Damage application ──────────────────────────────────────────────────
 
-        /// <summary>Applies damage to an enemy, publishing damage/death events.</summary>
+        /// <summary>
+        /// Applies damage to an enemy. ArmorPoints absorb first; remaining goes to HP.
+        /// Publishes EnemyDamagedEvent (and EnemyDiedEvent / ArmorRemovedEvent as needed).
+        /// </summary>
         public void ApplyDamage(EnemyCombatModel enemy, int damage)
         {
-            enemy.HP -= damage;
+            int remaining = damage;
+
+            // Armor absorbs first
+            if (enemy.ArmorPoints > 0)
+            {
+                int absorbed = Mathf.Min(enemy.ArmorPoints, remaining);
+                enemy.ArmorPoints -= absorbed;
+                remaining         -= absorbed;
+
+                if (enemy.ArmorPoints == 0)
+                    EventBus.Publish(new ArmorRemovedEvent { EntityId = enemy.EntityId });
+            }
+
+            // Remaining damage goes to HP
+            enemy.HP -= remaining;
             if (enemy.HP < 0) enemy.HP = 0;
 
             EventBus.Publish(new EnemyDamagedEvent
@@ -102,7 +120,17 @@ namespace Mergistry.Services
             if (enemy.HP <= 0)
                 EventBus.Publish(new EnemyDiedEvent { EntityId = enemy.EntityId });
 
-            Debug.Log($"[DamageService] Enemy {enemy.EntityId} ({enemy.Type}) took {damage} dmg → HP={enemy.HP}/{enemy.MaxHP}");
+            Debug.Log($"[DamageService] Enemy {enemy.EntityId} ({enemy.Type}) took {damage} dmg " +
+                      $"→ armor={enemy.ArmorPoints}, HP={enemy.HP}/{enemy.MaxHP}");
+        }
+
+        /// <summary>Instantly removes all armor from an enemy (Acid effect).</summary>
+        public void RemoveArmor(EnemyCombatModel enemy)
+        {
+            if (enemy.ArmorPoints <= 0) return;
+            enemy.ArmorPoints = 0;
+            EventBus.Publish(new ArmorRemovedEvent { EntityId = enemy.EntityId });
+            Debug.Log($"[DamageService] Enemy {enemy.EntityId} armor stripped by Acid");
         }
 
         /// <summary>Applies damage to the player, publishing damage event.</summary>

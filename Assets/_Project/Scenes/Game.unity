@@ -825,6 +825,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1339869769}
   - component: {fileID: 1339869770}
+  - component: {fileID: 1339869771}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -859,6 +860,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75e6d123675d27b468265ae6e0f40256, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Mergistry.Boot.GameManager
+--- !u!114 &1339869771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1339869767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68061916de4a8ac41a6c4295f9e1a756, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Mergistry.DevTools.DevPanel
 --- !u!1 &1365594543
 GameObject:
   m_ObjectHideFlags: 0

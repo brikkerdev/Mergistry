@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Mergistry.Data;
 using UnityEngine;
 
@@ -29,6 +30,26 @@ namespace Mergistry.Events
     }
 
     public struct EnemyDiedEvent
+    {
+        public int EntityId;
+    }
+
+    // --- Combat: A2 ---
+    public struct EnemyPushedEvent
+    {
+        public int       EntityId;
+        public Vector2Int FromPos;
+        public Vector2Int ToPos;
+        public bool      WallHit;   // true → +1 bonus damage applied
+    }
+
+    public struct BombExplodedEvent
+    {
+        public int                 EntityId;
+        public List<Vector2Int>    AffectedCells;
+    }
+
+    public struct ArmorRemovedEvent
     {
         public int EntityId;
     }

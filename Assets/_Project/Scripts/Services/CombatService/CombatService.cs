@@ -23,7 +23,10 @@ namespace Mergistry.Services
 
         /// <summary>
         /// Spawns enemies for the given fight index:
-        /// 0 → 1 Skeleton;  1 → 2 Skeletons;  2 → 1 Skeleton + 1 Spider.
+        /// 0 → 1 Skeleton;  1 → 2 Skeletons;  2 → 1 Skeleton + 1 Spider;
+        /// 3 → 1 MushroomBomb + 2 Skeletons;
+        /// 4 → 1 MagnetGolem;
+        /// 5 → 1 ArmoredBeetle.
         /// </summary>
         public void SpawnEnemies(CombatModel model, int fightIndex)
         {
@@ -39,22 +42,38 @@ namespace Mergistry.Services
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
                                                            new Vector2Int(1, 3), hp: 3));
                     break;
-                default:
+                case 2:
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
                                                            new Vector2Int(3, 3), hp: 3));
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Spider,
                                                            new Vector2Int(4, 1), hp: 2));
+                    break;
+                // A2 test fights
+                case 3:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MushroomBomb,
+                                                           new Vector2Int(2, 4), hp: 3, bombTimer: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 3), hp: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(1, 3), hp: 3));
+                    break;
+                case 4:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MagnetGolem,
+                                                           new Vector2Int(3, 3), hp: 6));
+                    break;
+                case 5:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.ArmoredBeetle,
+                                                           new Vector2Int(3, 3), hp: 4, armorPoints: 2));
+                    break;
+                default:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 3), hp: 3));
                     break;
             }
         }
 
         // ── Movement ────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Returns all cells reachable from the player's current position:
-        /// horizontal/vertical up to 2 steps + L-shapes (±1,±2) and (±2,±1).
-        /// Occupied cells (by living enemies) are excluded.
-        /// </summary>
         public List<Vector2Int> GetValidMoves(CombatModel combat)
         {
             var result = new List<Vector2Int>();
@@ -121,15 +140,63 @@ namespace Mergistry.Services
             }
         }
 
-        /// <summary>
-        /// Skip action: heals +1 HP. Use StartNextPlayerTurn separately to reset flags/cooldowns.
-        /// </summary>
+        /// <summary>Skip action: heals +1 HP.</summary>
         public void HealOnSkip(CombatModel model)
         {
             if (model.Player.HP < model.Player.MaxHP)
                 model.Player.HP++;
 
             Debug.Log($"[CombatService] Skip heal — HP={model.Player.HP}/{model.Player.MaxHP}");
+        }
+
+        // ── A2: Enemy push ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Pushes an adjacent enemy one cell in the given direction.
+        /// If the destination is out of bounds or blocked → wall hit (+1 bonus damage).
+        /// Returns the result for the caller to apply effects and animation.
+        /// </summary>
+        public PushResult PushEnemy(CombatModel model, EnemyCombatModel enemy, Vector2Int direction)
+        {
+            var newPos   = enemy.Position + direction;
+            bool wallHit = !model.Grid.IsInBounds(newPos.x, newPos.y);
+
+            if (!wallHit)
+            {
+                // Check blocked by player or another enemy
+                if (newPos == model.Player.Position)
+                {
+                    wallHit = true;
+                }
+                else
+                {
+                    foreach (var other in model.Enemies)
+                    {
+                        if (!other.IsDead && other.EntityId != enemy.EntityId && other.Position == newPos)
+                        {
+                            wallHit = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var fromPos = enemy.Position;
+            if (!wallHit)
+                enemy.Position = newPos;
+
+            EventBus.Publish(new EnemyPushedEvent
+            {
+                EntityId = enemy.EntityId,
+                FromPos  = fromPos,
+                ToPos    = enemy.Position,
+                WallHit  = wallHit
+            });
+
+            Debug.Log($"[CombatService] Pushed enemy {enemy.EntityId} " +
+                      $"{fromPos} → {enemy.Position} (wallHit={wallHit})");
+
+            return new PushResult { Moved = !wallHit, BonusDamage = wallHit ? 1 : 0 };
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────────
@@ -140,5 +207,11 @@ namespace Mergistry.Services
                 if (!enemy.IsDead && enemy.Position == pos) return true;
             return false;
         }
+    }
+
+    public struct PushResult
+    {
+        public bool Moved;
+        public int  BonusDamage;
     }
 }
