@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mergistry.Data;
+using Mergistry.Models.Combat;
 using Mergistry.Models.Map;
 using Mergistry.UI.Popups;
 using UnityEngine;
@@ -173,6 +174,18 @@ namespace Mergistry.UI.Screens
             nameTm.color = active ? new Color(0.68f, 0.72f, 0.88f)
                                   : new Color(0.22f, 0.22f, 0.32f);
 
+            // A7: room modifier badge (bottom-right corner)
+            if (!visited && node.CombatSetup != null &&
+                node.CombatSetup.Modifier != RoomModifierType.None)
+            {
+                var modGo = MakeLabelGo("Modifier", go.transform,
+                    new Vector3(0.30f, -0.30f, -0.08f), 0.013f, 80);
+                var modTm = modGo.GetComponent<TextMesh>();
+                modTm.text      = ModifierBadge(node.CombatSetup.Modifier);
+                modTm.color     = ModifierColor(node.CombatSetup.Modifier);
+                modTm.alignment = TextAlignment.Right;
+            }
+
             // Click collider only for accessible unvisited nodes
             if (active)
             {
@@ -211,6 +224,23 @@ namespace Mergistry.UI.Screens
             MapNodeType.Event => "",
             MapNodeType.Boss  => "",
             _                 => ""
+        };
+
+        // A7: room modifier badge text and color
+        private static string ModifierBadge(RoomModifierType mod) => mod switch
+        {
+            RoomModifierType.Flooded => "~",
+            RoomModifierType.Burning => "^",
+            RoomModifierType.Pits    => "o",
+            _                        => ""
+        };
+
+        private static Color ModifierColor(RoomModifierType mod) => mod switch
+        {
+            RoomModifierType.Flooded => new Color(0.25f, 0.65f, 1.00f),
+            RoomModifierType.Burning => new Color(1.00f, 0.50f, 0.10f),
+            RoomModifierType.Pits    => new Color(0.55f, 0.45f, 0.70f),
+            _                        => Color.white
         };
 
         private static void MakeChildQuad(string name, Transform parent,

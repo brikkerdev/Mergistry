@@ -50,6 +50,7 @@
     <Compile Include="Assets\_Project\Scripts\Data\Enums\PotionType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\ZoneInstance.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\ZoneType.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\ComboType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\RelicModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\AIService.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\EnemyView.cs" />
@@ -66,6 +67,7 @@
     <Compile Include="Assets\_Project\Scripts\Services\DistillationService\DistillationService.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\DistillationState\DistillationState.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Screens\ResultScreenView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Data\Enums\RoomModifierType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\InventoryModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\EffectView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\IngredientView.cs" />

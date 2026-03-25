@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mergistry.Data;
+using UnityEngine;
 
 namespace Mergistry.Models.Combat
 {
@@ -23,6 +24,10 @@ namespace Mergistry.Models.Combat
         public EnemyCombatModel       BossEnemy          { get; set; }   // NOT in Enemies list
         public List<InteractableModel> Interactables     { get; } = new List<InteractableModel>();
         public bool                   CauldronsDestroyed { get; set; } = false;
+
+        // A7: room modifier
+        public RoomModifierType   RoomModifier { get; set; } = RoomModifierType.None;
+        public List<Vector2Int>   PitPositions { get; }      = new List<Vector2Int>();
 
         private int _nextEntityId;
         public int NextEntityId() => _nextEntityId++;

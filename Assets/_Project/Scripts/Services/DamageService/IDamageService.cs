@@ -14,5 +14,11 @@ namespace Mergistry.Services
         void ApplyDamage(EnemyCombatModel enemy, int damage);
         void RemoveArmor(EnemyCombatModel enemy);
         void ApplyDamageToPlayer(PlayerCombatModel player, int damage);
+
+        /// <summary>
+        /// A7: Checks whether the potion hitting the given AoE cells triggers a zone combo.
+        /// Returns the first matching ComboType (None if no combo).
+        /// </summary>
+        ComboType CheckCombo(PotionType potion, List<Vector2Int> aoeCells, GridModel grid);
     }
 }

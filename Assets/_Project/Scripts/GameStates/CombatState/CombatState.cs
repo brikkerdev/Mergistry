@@ -48,6 +48,9 @@ namespace Mergistry.GameStates
         // A3: zone overlay views keyed by (x * GridModel.Height + y)
         private readonly Dictionary<int, ZoneOverlayView> _zoneOverlays = new Dictionary<int, ZoneOverlayView>();
 
+        // A7: pit visual objects
+        private readonly List<GameObject> _pitObjects = new List<GameObject>();
+
         private enum TurnPhase { PlayerTurn, EnemyTurn }
         private TurnPhase _phase;
 
@@ -228,6 +231,11 @@ namespace Mergistry.GameStates
             }
 
             _combatService.SpawnEnemies(_model, combatSetup);
+
+            // A7: apply room modifier
+            if (combatSetup != null)
+                ApplyRoomModifier(combatSetup);
+
             _selectedSlot = -1;
             _phase        = TurnPhase.PlayerTurn;
 
@@ -305,6 +313,7 @@ namespace Mergistry.GameStates
 
             DestroyAllEnemyViews();
             DestroyAllZoneOverlays(); // A3
+            DestroyAllPitVisuals();   // A7
 
             _gridView.gameObject.SetActive(false);
             _playerView.gameObject.SetActive(false);
@@ -327,8 +336,28 @@ namespace Mergistry.GameStates
             if (_phase != TurnPhase.PlayerTurn) return;
             if (_model.Player.HasMoved) return;
 
+            var oldPos = _model.Player.Position;
             _model.Player.Position = target;
             _model.Player.HasMoved = true;
+
+            // A7: Ice zone — slide +1 cell in the same direction
+            if (_model.Grid.GetZonesAt(target).Exists(z => z.Type == ZoneType.Ice))
+            {
+                var delta = target - oldPos;
+                var dir   = new Vector2Int(System.Math.Sign(delta.x), System.Math.Sign(delta.y));
+                if (dir != Vector2Int.zero)
+                {
+                    var slide = target + dir;
+                    if (_model.Grid.IsInBounds(slide.x, slide.y)
+                        && !_model.Enemies.Exists(e => !e.IsDead && e.Position == slide)
+                        && !_model.PitPositions.Contains(slide))
+                    {
+                        _model.Player.Position = slide;
+                        target = slide;
+                        Debug.Log($"[CombatState] Player slid on Ice to {slide}");
+                    }
+                }
+            }
 
             _playerView.MoveTo(_gridView.GridToWorld(target));
 
@@ -358,7 +387,13 @@ namespace Mergistry.GameStates
             if (_enemyViews.TryGetValue(entityId, out var view))
                 view.PlayPushAnimation(_gridView.GridToWorld(enemy.Position));
 
-            if (result.BonusDamage > 0)
+            if (result.PitKill)
+            {
+                // Enemy fell into a pit — instant death, no bonus damage needed
+                _effectView.PlayEffect(_gridView.GridToWorld(enemy.Position), new Color(0.1f, 0.05f, 0.2f));
+                Debug.Log($"[CombatState] Enemy {entityId} fell into a pit — instant kill");
+            }
+            else if (result.BonusDamage > 0)
             {
                 _damageService.ApplyDamage(enemy, result.BonusDamage);
                 if (_enemyViews.TryGetValue(entityId, out var v))
@@ -416,7 +451,18 @@ namespace Mergistry.GameStates
             foreach (var aoeCell in aoeCells)
                 _effectView.PlayEffect(_gridView.GridToWorld(aoeCell), potionColor);
 
+            // A7: combo detection (before damage, before zones consumed)
+            var combo = _damageService.CheckCombo(slot.Type, aoeCells, _model.Grid);
+
             int damage = _damageService.GetDamage(slot.Type, slot.Level);
+
+            // A7: Flooded room — Fire potions deal ×0.5 damage
+            if (_model.RoomModifier == RoomModifierType.Flooded &&
+                (slot.Type == PotionType.Flame || slot.Type == PotionType.Napalm ||
+                 slot.Type == PotionType.Flare))
+            {
+                damage = Mathf.Max(1, Mathf.RoundToInt(damage * 0.5f));
+            }
 
             // A2: Acid removes armor before dealing damage
             if (slot.Type == PotionType.Acid)
@@ -457,6 +503,21 @@ namespace Mergistry.GameStates
 
             // A3: Create zones from certain potions
             CreateZonesFromPotion(slot.Type, aoeCells);
+
+            // A7: Apply combo secondary effect + show visual
+            if (combo != ComboType.None)
+            {
+                ApplyComboEffect(combo, slot.Type, slot.Level, aoeCells);
+                _effectView.PlayComboText(_gridView.GridToWorld(cell));
+                _effectView.PlayCameraShake();
+
+                EventBus.Publish(new ComboTriggeredEvent
+                {
+                    Type          = combo,
+                    AffectedCells = aoeCells
+                });
+                Debug.Log($"[CombatState] Combo triggered: {combo}");
+            }
 
             _selectedSlot = -1;
             _gridView.ClearHighlights();
@@ -536,6 +597,169 @@ namespace Mergistry.GameStates
             foreach (var kv in _zoneOverlays)
                 if (kv.Value != null) Object.Destroy(kv.Value.gameObject);
             _zoneOverlays.Clear();
+        }
+
+        // ── A7: Room modifier ─────────────────────────────────────────────────
+
+        private void ApplyRoomModifier(CombatSetup setup)
+        {
+            _model.RoomModifier = setup.Modifier;
+
+            switch (setup.Modifier)
+            {
+                case RoomModifierType.Flooded:
+                    // Fill entire grid with persistent Water zones (duration 99 = whole fight)
+                    for (int x = 0; x < GridModel.Width; x++)
+                    for (int y = 0; y < GridModel.Height; y++)
+                    {
+                        var cell = new Vector2Int(x, y);
+                        _model.Grid.AddZone(ZoneType.Water, cell, 99);
+                        SpawnOrRefreshZoneOverlay(ZoneType.Water, cell);
+                    }
+                    Debug.Log("[CombatState] Room modifier: Flooded — grid covered in Water");
+                    break;
+
+                case RoomModifierType.Pits:
+                    _model.PitPositions.AddRange(setup.PitPositions);
+                    foreach (var pit in setup.PitPositions)
+                        SpawnPitVisual(pit);
+                    Debug.Log($"[CombatState] Room modifier: Pits — {setup.PitPositions.Count} pits placed");
+                    break;
+
+                case RoomModifierType.Burning:
+                    Debug.Log("[CombatState] Room modifier: Burning — random cells ignite each turn");
+                    break;
+            }
+        }
+
+        private void SpawnPitVisual(Vector2Int cell)
+        {
+            var worldPos = _gridView.GridToWorld(cell);
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = $"Pit_{cell.x}_{cell.y}";
+            go.transform.SetParent(_gridView.transform.parent);
+            go.transform.position = new Vector3(worldPos.x, worldPos.y, worldPos.z - 0.02f);
+            go.transform.localScale = Vector3.one * 0.88f;
+            Object.Destroy(go.GetComponent<MeshCollider>());
+
+            var rend = go.GetComponent<MeshRenderer>();
+            rend.material = new Material(Shader.Find("Unlit/Color"))
+                { color = new Color(0.06f, 0.04f, 0.10f) };
+            rend.sortingOrder = -2;
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows    = false;
+
+            _pitObjects.Add(go);
+        }
+
+        private void DestroyAllPitVisuals()
+        {
+            foreach (var go in _pitObjects)
+                if (go != null) Object.Destroy(go);
+            _pitObjects.Clear();
+        }
+
+        // ── A7: Combo effects ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Applies the combo effect after potion throw. The primary damage was already
+        /// dealt; combos add secondary effects.
+        /// </summary>
+        private void ApplyComboEffect(ComboType combo, PotionType potionType, int potionLevel,
+                                       List<Vector2Int> aoeCells)
+        {
+            switch (combo)
+            {
+                case ComboType.LightningWater:
+                {
+                    // ×2 extra damage to ALL enemies standing on Water zones (entire grid)
+                    var waterCells = new HashSet<Vector2Int>();
+                    foreach (var z in _model.Grid.Zones)
+                        if (z.Type == ZoneType.Water) waterCells.Add(z.Position);
+
+                    int bonusDmg = _damageService.GetDamage(potionType, potionLevel);
+                    foreach (var enemy in _model.Enemies.ToList())
+                    {
+                        if (!enemy.IsDead && waterCells.Contains(enemy.Position))
+                        {
+                            _damageService.ApplyDamage(enemy, bonusDmg);
+                            if (_enemyViews.TryGetValue(enemy.EntityId, out var ev))
+                                ev.PlayHitFlash();
+                        }
+                    }
+
+                    // Remove water zones that were in the AoE
+                    for (int i = _model.Grid.Zones.Count - 1; i >= 0; i--)
+                    {
+                        var z = _model.Grid.Zones[i];
+                        if (z.Type == ZoneType.Water && aoeCells.Contains(z.Position))
+                        {
+                            RemoveZoneOverlay(z.Position);
+                            _model.Grid.Zones.RemoveAt(i);
+                        }
+                    }
+                    Debug.Log("[CombatState] Combo LightningWater — bonus damage to all on water");
+                    break;
+                }
+
+                case ComboType.FirePoison:
+                {
+                    // Expand Poison zones that are inside the AoE to adjacent cells
+                    var poisonInAoe = new List<ZoneInstance>();
+                    foreach (var z in _model.Grid.Zones)
+                        if (z.Type == ZoneType.Poison && aoeCells.Contains(z.Position))
+                            poisonInAoe.Add(z);
+
+                    var spread = new List<Vector2Int>();
+                    foreach (var pz in poisonInAoe)
+                    {
+                        var neighbors = new[]
+                        {
+                            pz.Position + Vector2Int.up, pz.Position + Vector2Int.down,
+                            pz.Position + Vector2Int.left, pz.Position + Vector2Int.right
+                        };
+                        foreach (var n in neighbors)
+                        {
+                            if (!_model.Grid.IsInBounds(n.x, n.y)) continue;
+                            _model.Grid.AddZone(ZoneType.Poison, n, pz.TurnsRemaining);
+                            SpawnOrRefreshZoneOverlay(ZoneType.Poison, n);
+                            spread.Add(n);
+                        }
+                    }
+                    Debug.Log($"[CombatState] Combo FirePoison — Poison spread to {spread.Count} cells");
+                    break;
+                }
+
+                case ComboType.StreamIce:
+                {
+                    // Convert Water→Ice in AoE, freeze (Stun) enemies standing on any Water
+                    var waterInAoe = new List<ZoneInstance>();
+                    foreach (var z in _model.Grid.Zones)
+                        if (z.Type == ZoneType.Water && aoeCells.Contains(z.Position))
+                            waterInAoe.Add(z);
+
+                    foreach (var wz in waterInAoe)
+                    {
+                        _model.Grid.Zones.Remove(wz);
+                        RemoveZoneOverlay(wz.Position);
+                        _model.Grid.AddZone(ZoneType.Ice, wz.Position, wz.TurnsRemaining);
+                        SpawnOrRefreshZoneOverlay(ZoneType.Ice, wz.Position);
+                    }
+
+                    // Freeze enemies standing on ANY Water zone (whole grid)
+                    var allWater = new HashSet<Vector2Int>();
+                    foreach (var z in _model.Grid.Zones)
+                        if (z.Type == ZoneType.Water) allWater.Add(z.Position);
+
+                    foreach (var enemy in _model.Enemies)
+                        if (!enemy.IsDead && allWater.Contains(enemy.Position))
+                            ApplyStatusToEnemy(enemy, StatusEffectType.Stun, 1);
+
+                    Debug.Log($"[CombatState] Combo StreamIce — {waterInAoe.Count} Water→Ice, enemies frozen");
+                    break;
+                }
+            }
         }
 
         // ── Skip turn ─────────────────────────────────────────────────────────
@@ -640,6 +864,14 @@ namespace Mergistry.GameStates
             _playerView.PlaceAt(_gridView.GridToWorld(_model.Player.Position));
 
             yield return new WaitForSeconds(0.15f);
+
+            // A7: Burning room — ignite 1-2 random cells
+            if (_model.RoomModifier == RoomModifierType.Burning)
+            {
+                var newFire = _combatService.ApplyBurningRoom(_model);
+                foreach (var fireCell in newFire)
+                    SpawnOrRefreshZoneOverlay(ZoneType.Fire, fireCell);
+            }
 
             // A3: Apply zone effects (Fire/Poison DoT, Water Slow)
             _combatService.ApplyZoneEffects(_model, _damageService);

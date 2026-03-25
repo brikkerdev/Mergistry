@@ -41,6 +41,7 @@ namespace Mergistry.Views.Combat
             ZoneType.Fire   => new Color(1.00f, 0.35f, 0.00f, 0.50f),
             ZoneType.Water  => new Color(0.10f, 0.55f, 1.00f, 0.45f),
             ZoneType.Poison => new Color(0.35f, 0.90f, 0.10f, 0.50f),
+            ZoneType.Ice    => new Color(0.60f, 0.88f, 1.00f, 0.55f),  // A7: icy blue
             _               => new Color(1.00f, 1.00f, 1.00f, 0.30f)
         };
     }

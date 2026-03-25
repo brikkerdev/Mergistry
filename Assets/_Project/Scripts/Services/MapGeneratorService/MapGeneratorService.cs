@@ -307,7 +307,47 @@ namespace Mergistry.Services
                 setup.Enemies.Add(new EnemySpawnInfo(fallback, GetBaseHP(fallback), GetBaseArmor(fallback)));
             }
 
+            // A7: ~30% chance of a room modifier for non-boss combat nodes
+            if (nodeType != MapNodeType.Boss)
+                AssignRoomModifier(setup, rng);
+
             return setup;
+        }
+
+        // ── A7: Room modifier assignment ────────────────────────────────────────
+
+        // Pit positions: away from typical player start (1,1) and common enemy positions
+        private static readonly Vector2Int[] PitCandidates =
+        {
+            new Vector2Int(2, 0), new Vector2Int(0, 2),
+            new Vector2Int(4, 2), new Vector2Int(2, 4),
+            new Vector2Int(4, 0), new Vector2Int(0, 4),
+        };
+
+        private static void AssignRoomModifier(CombatSetup setup, System.Random rng)
+        {
+            if (rng.NextDouble() > 0.30) return; // 30% chance
+
+            int roll = rng.Next(3);
+            setup.Modifier = roll switch
+            {
+                0 => RoomModifierType.Flooded,
+                1 => RoomModifierType.Burning,
+                _ => RoomModifierType.Pits
+            };
+
+            if (setup.Modifier == RoomModifierType.Pits)
+            {
+                int pitCount = rng.Next(2, 4); // 2 or 3 pits
+                var shuffled = new List<Vector2Int>(PitCandidates);
+                for (int i = shuffled.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+                }
+                for (int i = 0; i < pitCount && i < shuffled.Count; i++)
+                    setup.PitPositions.Add(shuffled[i]);
+            }
         }
 
         /// <summary>

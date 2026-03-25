@@ -302,5 +302,35 @@ namespace Mergistry.Services
 
         private static int Manhattan(Vector2Int a, Vector2Int b) =>
             Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+
+        // ── A7: Combo detection ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the ComboType if the thrown potion hits an AoE cell that contains
+        /// a matching zone type. Priority: LightningWater > FirePoison > StreamIce.
+        /// </summary>
+        public ComboType CheckCombo(PotionType potion, List<Vector2Int> aoeCells, GridModel grid)
+        {
+            foreach (var cell in aoeCells)
+            {
+                var zones = grid.GetZonesAt(cell);
+                foreach (var zone in zones)
+                {
+                    // Combo 1: Lightning + Water → ×2 damage to all on water
+                    if (potion == PotionType.Lightning && zone.Type == ZoneType.Water)
+                        return ComboType.LightningWater;
+
+                    // Combo 2: Fire/Napalm/Flare + Poison → poison cloud expands
+                    if ((potion == PotionType.Flame || potion == PotionType.Napalm || potion == PotionType.Flare)
+                        && zone.Type == ZoneType.Poison)
+                        return ComboType.FirePoison;
+
+                    // Combo 3: Stream + Water → Water converts to Ice, freeze enemies on water
+                    if (potion == PotionType.Stream && zone.Type == ZoneType.Water)
+                        return ComboType.StreamIce;
+                }
+            }
+            return ComboType.None;
+        }
     }
 }

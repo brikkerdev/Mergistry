@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Mergistry.Data;
 using Mergistry.Models.Combat;
 using UnityEngine;
+// ReSharper disable once RedundantUsingDirective (kept for struct field types)
 
 namespace Mergistry.Events
 {
@@ -123,5 +124,12 @@ namespace Mergistry.Events
     public struct BossPhaseChangedEvent
     {
         public BossPhase NewPhase;
+    }
+
+    // --- A7: Combo events ---
+    public struct ComboTriggeredEvent
+    {
+        public ComboType            Type;
+        public List<Vector2Int>     AffectedCells;
     }
 }

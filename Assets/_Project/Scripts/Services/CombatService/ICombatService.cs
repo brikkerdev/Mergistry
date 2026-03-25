@@ -17,5 +17,11 @@ namespace Mergistry.Services
         void ApplyZoneEffects(CombatModel model, IDamageService damageService);
         List<ZoneInstance> TickZones(GridModel grid);
         void TickStatuses(CombatModel model, IDamageService damageService);
+
+        /// <summary>
+        /// A7: Ignites 1-2 random empty cells in a Burning room.
+        /// Returns the newly created fire zone positions so views can update.
+        /// </summary>
+        List<Vector2Int> ApplyBurningRoom(CombatModel model);
     }
 }

@@ -201,10 +201,18 @@ namespace Mergistry.Services
         {
             var newPos   = enemy.Position + direction;
             bool wallHit = !model.Grid.IsInBounds(newPos.x, newPos.y);
+            bool pitKill = false;
 
             if (!wallHit)
             {
-                if (newPos == model.Player.Position)
+                // A7: pit check — enemy pushed into a pit dies instantly
+                if (model.PitPositions.Contains(newPos))
+                {
+                    pitKill        = true;
+                    enemy.Position = newPos;
+                    enemy.HP       = 0;
+                }
+                else if (newPos == model.Player.Position)
                 {
                     wallHit = true;
                 }
@@ -222,7 +230,7 @@ namespace Mergistry.Services
             }
 
             var fromPos = enemy.Position;
-            if (!wallHit)
+            if (!wallHit && !pitKill)
                 enemy.Position = newPos;
 
             EventBus.Publish(new EnemyPushedEvent
@@ -234,9 +242,9 @@ namespace Mergistry.Services
             });
 
             Debug.Log($"[CombatService] Pushed enemy {enemy.EntityId} " +
-                      $"{fromPos} → {enemy.Position} (wallHit={wallHit})");
+                      $"{fromPos} → {enemy.Position} (wallHit={wallHit}, pitKill={pitKill})");
 
-            return new PushResult { Moved = !wallHit, BonusDamage = wallHit ? 1 : 0 };
+            return new PushResult { Moved = !wallHit, BonusDamage = wallHit ? 1 : 0, PitKill = pitKill };
         }
 
         // ── A3: Zone & status management ────────────────────────────────────────
@@ -366,11 +374,60 @@ namespace Mergistry.Services
                     effects.RemoveAt(i);
             }
         }
+
+        // ── A7: Burning room ────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Ignites 1-2 random cells that are NOT occupied by the player or living enemies.
+        /// Returns newly created fire zone positions (so CombatState can spawn overlays).
+        /// </summary>
+        public List<Vector2Int> ApplyBurningRoom(CombatModel model)
+        {
+            if (model.RoomModifier != RoomModifierType.Burning)
+                return new List<Vector2Int>();
+
+            // Build set of occupied positions
+            var occupied = new HashSet<Vector2Int> { model.Player.Position };
+            foreach (var e in model.Enemies)
+                if (!e.IsDead) occupied.Add(e.Position);
+
+            // Gather candidate cells (not occupied, not already on fire)
+            var candidates = new List<Vector2Int>();
+            for (int x = 0; x < GridModel.Width; x++)
+            for (int y = 0; y < GridModel.Height; y++)
+            {
+                var cell = new Vector2Int(x, y);
+                if (occupied.Contains(cell)) continue;
+                if (model.Grid.Zones.Exists(z => z.Type == ZoneType.Fire && z.Position == cell)) continue;
+                candidates.Add(cell);
+            }
+
+            if (candidates.Count == 0) return new List<Vector2Int>();
+
+            // Fisher-Yates shuffle
+            for (int i = candidates.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
+            }
+
+            int count     = Random.Range(1, 3); // 1 or 2
+            var fireCells = new List<Vector2Int>();
+            for (int i = 0; i < count && i < candidates.Count; i++)
+            {
+                model.Grid.AddZone(ZoneType.Fire, candidates[i], 2);
+                fireCells.Add(candidates[i]);
+            }
+
+            Debug.Log($"[CombatService] BurningRoom ignited {fireCells.Count} cells");
+            return fireCells;
+        }
     }
 
     public struct PushResult
     {
         public bool Moved;
         public int  BonusDamage;
+        public bool PitKill;    // A7: enemy was pushed into a pit (instant death)
     }
 }
