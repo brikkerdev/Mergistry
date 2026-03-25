@@ -26,7 +26,9 @@
       "Bash(find '/c/Unity Games/Mergistry/Assets/_Project' -type f -name *.cs)",
       "Bash(find 'C:/Unity Games/Mergistry/Assets' -name *.cs)",
       "Bash(find '/c/Unity Games/Mergistry/Assets' -type f -name *.cs)",
-      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project/Scripts' -type f -name *.cs)"
+      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project/Scripts' -type f -name *.cs)",
+      "Bash(find 'C:\\\\Unity Games\\\\Mergistry\\\\Assets\\\\Scripts' -name *.cs -type f)",
+      "Bash(find 'C:\\\\Unity Games\\\\Mergistry\\\\Assets\\\\Shaders' -name *.shader -o -name *.hlsl)"
     ]
   }
 }

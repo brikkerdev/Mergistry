@@ -63,6 +63,7 @@
     <Compile Include="Assets\_Project\Scripts\UI\HUD\ActionCounterView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\BossPhase.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\BoardModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\SaveService\SaveService.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\Behaviors\SkeletonBehavior.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\DistillationService\DistillationService.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\DistillationState\DistillationState.cs" />
@@ -78,6 +79,7 @@
     <Compile Include="Assets\_Project\Scripts\Services\CombatService\CombatService.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\MapNodeType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\PotionSlot.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\SaveService\RunSaveData.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\PotionDatabase.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\Behaviors\MirrorSlimeBehavior.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\Behaviors\SpiderBehavior.cs" />
@@ -96,6 +98,7 @@
     <Compile Include="Assets\_Project\Scripts\Services\RelicService\IRelicService.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\IntentType.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\LootService\ILootService.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\PostProcessController.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\EventState\EventState.cs" />
     <Compile Include="Assets\_Project\Scripts\Debug\DevPanel.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
@@ -127,6 +130,7 @@
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotClickHandler.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\EventBus\EventBus.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\Behaviors\MagnetGolemBehavior.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\SaveService\ISaveService.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\StatusEffectType.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotReplacePopup.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\RelicChoiceState\RelicChoiceState.cs" />
@@ -140,6 +144,7 @@
     <Compile Include="Assets\_Project\Scripts\GameStates\ResultState\ResultState.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\RelicType.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\Behaviors\NecromancerBehavior.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\SaveService\RunSaveHelper.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\CombatInputController.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\BossState\BossState.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardView.cs" />
@@ -151,14 +156,28 @@
     <Compile Include="Assets\_Project\Scripts\Events\GameEvents.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\BackgroundView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\ServiceLocator\ServiceLocator.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\MetaProgressionModel.cs" />
+    <None Include="Assets\_Project\Shaders\SH_Necromancer.shader" />
+    <None Include="Assets\_Project\Shaders\SH_PP_BloomExtract.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Zone_Fire.shader" />
     <None Include="Assets\_Project\Shaders\SH_Skeleton.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Phantom.shader" />
     <None Include="Assets\_Project\Shaders\SH_Player.shader" />
     <None Include="Assets\_Project\Shaders\SH_Floor.shader" />
+    <None Include="Assets\_Project\Shaders\SH_MagnetGolem.shader" />
+    <None Include="Assets\_Project\Shaders\SH_ArmoredBeetle.shader" />
     <None Include="Assets\_Project\Shaders\SH_Background.shader" />
+    <None Include="Assets\_Project\Shaders\SH_MirrorSlime.shader" />
+    <None Include="Assets\_Project\Shaders\SH_PP_BloomBlur.shader" />
+    <None Include="Assets\_Project\Shaders\SH_MushroomBomb.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Zone_Ice.shader" />
     <None Include="Assets\_Project\Shaders\AlchemistSDF.cginc" />
     <None Include="Assets\_Project\Shaders\SH_Brew.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Zone_Water.shader" />
     <None Include="Assets\_Project\Shaders\SH_Spider.shader" />
     <None Include="Assets\_Project\Shaders\SH_Ingredient.shader" />
+    <None Include="Assets\_Project\Shaders\SH_PP_BloomCombine.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Zone_Poison.shader" />
     <Reference Include="UnityEngine">
       <HintPath>C:\Program Files\Unity\Hub\Editor\6000.3.10f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
     </Reference>

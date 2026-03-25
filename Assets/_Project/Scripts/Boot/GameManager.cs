@@ -32,6 +32,7 @@ namespace Mergistry.Boot
         private EventState        _eventState;        // A4
         private RelicChoiceState  _relicChoiceState;  // A5
         private BossState         _bossState;         // A6
+        private ISaveService      _saveService;       // A8
 
         // ── Dev access ────────────────────────────────────────────────────────
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -51,6 +52,21 @@ namespace Mergistry.Boot
         private void Awake()  => Debug.Log("[GameManager] Awake");
         private void Start()  { Debug.Log("[GameManager] Start — initializing FSM"); Init(); }
         private void Update() => _fsm?.Tick();
+
+        // A8: auto-save mid-run on application pause / quit
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && _saveService != null && _runModel != null && _inventory != null
+                && _runModel.CurrentFight > 0)
+                _saveService.SaveRun(RunSaveHelper.Snapshot(_runModel, _inventory));
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (_saveService != null && _runModel != null && _inventory != null
+                && _runModel.CurrentFight > 0)
+                _saveService.SaveRun(RunSaveHelper.Snapshot(_runModel, _inventory));
+        }
 
         private void Init()
         {
@@ -138,11 +154,19 @@ namespace Mergistry.Boot
 
             IMapGeneratorService mapGeneratorService = new MapGeneratorService(); // A4
 
+            // A8: SaveService
+            if (!ServiceLocator.TryGet<ISaveService>(out var saveService))
+            {
+                saveService = new SaveService();
+                ServiceLocator.Register<ISaveService>(saveService);
+            }
+
             // ── Models ────────────────────────────────────────────────────────
             _inventory = new InventoryModel();
             _runModel  = new RunModel();
             relicService.SetModel(_runModel.Relics);
             inventoryView.Refresh(_inventory);
+            _saveService = saveService;
 
             // ── Programmatic screen objects ────────────────────────────────────
             var bookScreenGo = new GameObject("BookScreen");
@@ -201,12 +225,16 @@ namespace Mergistry.Boot
                 relicChoiceScreen, _fsm, fadeView, relicService);
             _relicChoiceState.SetMapState(_mapState);
 
-            _menuState = new MenuState(menuScreenView, _fsm, _mapState, fadeView); // A4: goes to map
+            _menuState = new MenuState(menuScreenView, _fsm, _mapState, fadeView,
+                saveService, _runModel, _inventory); // A8: save/continue flow
 
             if (resultView != null)
             {
                 _resultState = new ResultState(resultView, fadeView, _fsm, _runModel, _inventory);
                 _resultState.SetNavigationTargets(_menuState, _mapState); // A4: retry → map
+                // A8: wire save service so run end cleans up run.json and updates meta
+                var meta = saveService.LoadMeta();
+                _resultState.SetSaveService(saveService, meta);
             }
 
             // Wire flow dependencies into CombatState (A4: victory → mapState; A5: relic flow)

@@ -1,5 +1,6 @@
 using Mergistry.Core;
 using Mergistry.Models;
+using Mergistry.Services;
 using Mergistry.UI;
 using Mergistry.UI.Screens;
 
@@ -7,8 +8,7 @@ namespace Mergistry.GameStates
 {
     /// <summary>
     /// Displays the result screen (victory or defeat) after combat ends.
-    /// "Retry" resets the run and goes back to DistillationState.
-    /// "Menu" resets the run and goes to MenuState.
+    /// A8: deletes run.json and updates meta.json on Enter.
     /// </summary>
     public class ResultState : IGameState
     {
@@ -18,9 +18,12 @@ namespace Mergistry.GameStates
         private readonly RunModel         _runModel;
         private readonly InventoryModel   _inventory;
 
-        // Wired after all states are constructed (avoids constructor circular dependency).
         private MenuState _menuState;
-        private MapState  _mapState; // A4: retry goes to map
+        private MapState  _mapState;
+
+        // A8: injected via SetSaveService after construction
+        private ISaveService          _saveService;
+        private MetaProgressionModel  _meta;
 
         public ResultState(
             ResultScreenView view,
@@ -36,17 +39,38 @@ namespace Mergistry.GameStates
             _inventory = inventory;
         }
 
-        /// <summary>Call from GameManager after all states are built.</summary>
         public void SetNavigationTargets(MenuState menuState, MapState mapState)
         {
             _menuState = menuState;
             _mapState  = mapState;
         }
 
+        /// <summary>A8: inject save service so result state can update meta.</summary>
+        public void SetSaveService(ISaveService saveService, MetaProgressionModel meta)
+        {
+            _saveService = saveService;
+            _meta        = meta;
+        }
+
         // ── IGameState ───────────────────────────────────────────────────────
 
         public void Enter()
         {
+            // A8: run is over — delete mid-run save and update meta-progression
+            if (_saveService != null)
+            {
+                _saveService.DeleteRunSave();
+
+                if (_meta != null)
+                {
+                    _meta.TotalRuns++;
+                    if (_runModel.LastVictory) _meta.TotalVictories++;
+                    if (_runModel.CurrentFight - 1 > _meta.BestFightReached)
+                        _meta.BestFightReached = _runModel.CurrentFight - 1;
+                    _saveService.SaveMeta(_meta);
+                }
+            }
+
             _view.Show(_runModel.LastVictory, _runModel.CurrentFight - 1);
             _view.OnRetryClicked += OnRetry;
             _view.OnMenuClicked  += OnMenu;

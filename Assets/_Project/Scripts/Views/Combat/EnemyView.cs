@@ -200,18 +200,10 @@ namespace Mergistry.Views.Combat
 
         private void BuildMushroomBomb()
         {
-            // Placeholder: half-circle body (rectangle) + round cap
             _baseBodyColor = MushroomYellow;
-            var shader = Shader.Find("Unlit/Color");
-
-            // Cap (top semicircle placeholder = wider quad)
-            MakeQuad("CapQuad", new Vector3(0f, 0.18f, 0f), new Vector3(0.85f, 0.55f, 1f),
-                     _baseBodyColor, shader, transform);
-
-            // Stem (lower rectangle)
-            var stem = MakeQuad("StemQuad", new Vector3(0f, -0.22f, 0f), new Vector3(0.35f, 0.40f, 1f),
-                                _baseBodyColor, shader, transform);
-            _bodyRenderer = stem.GetComponent<MeshRenderer>();
+            var shader = Shader.Find("Mergistry/SH_MushroomBomb") ?? Shader.Find("Unlit/Color");
+            var go = MakeQuad("MushroomQuad", Vector3.zero, Vector3.one * 0.95f, _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
 
             // Timer label above head
             var timerGo = new GameObject("TimerLabel");
@@ -245,40 +237,25 @@ namespace Mergistry.Views.Combat
         private void BuildMirrorSlime()
         {
             _baseBodyColor = MirrorSlimeColor;
-            // Metaball-style: two overlapping circles as placeholder
-            var shader = Shader.Find("Unlit/Color");
-            var go     = MakeQuad("SlimeBody", new Vector3(0f, 0.05f, 0f), new Vector3(0.85f, 0.75f, 1f),
-                                  _baseBodyColor, shader);
+            var shader = Shader.Find("Mergistry/SH_MirrorSlime") ?? Shader.Find("Unlit/Color");
+            var go     = MakeQuad("SlimeBody", Vector3.zero, Vector3.one * 0.90f, _baseBodyColor, shader);
             _bodyRenderer = go.GetComponent<MeshRenderer>();
-            MakeQuad("SlimeBlob", new Vector3(0.20f, -0.15f, 0.01f), new Vector3(0.45f, 0.45f, 1f),
-                     new Color(MirrorSlimeColor.r * 0.85f, MirrorSlimeColor.g * 0.85f, MirrorSlimeColor.b, 1f),
-                     shader, transform);
         }
 
         private void BuildPhantom()
         {
             _baseBodyColor = PhantomColor;
-            var shader = Shader.Find("Unlit/Color");
-            // Ghost shape: upper body + wispy bottom
-            var go = MakeQuad("PhantomBody", new Vector3(0f, 0.10f, 0f), new Vector3(0.80f, 0.80f, 1f),
-                               _baseBodyColor, shader);
+            var shader = Shader.Find("Mergistry/SH_Phantom") ?? Shader.Find("Unlit/Color");
+            var go = MakeQuad("PhantomBody", Vector3.zero, Vector3.one * 0.85f, _baseBodyColor, shader);
             _bodyRenderer = go.GetComponent<MeshRenderer>();
-            MakeQuad("PhantomTail", new Vector3(0f, -0.30f, 0.01f), new Vector3(0.55f, 0.30f, 1f),
-                     new Color(PhantomColor.r, PhantomColor.g, PhantomColor.b, 0.6f),
-                     Shader.Find("Sprites/Default") ?? shader, transform);
         }
 
         private void BuildNecromancer()
         {
             _baseBodyColor = NecromancerColor;
-            var shader = Shader.Find("Unlit/Color");
-            // Robed figure: tall narrow quad + hood top
-            var go = MakeQuad("NecroRobe", new Vector3(0f, -0.05f, 0f), new Vector3(0.60f, 0.90f, 1f),
-                               _baseBodyColor, shader);
+            var shader = Shader.Find("Mergistry/SH_Necromancer") ?? Shader.Find("Unlit/Color");
+            var go = MakeQuad("NecroBody", Vector3.zero, Vector3.one * 0.90f, _baseBodyColor, shader);
             _bodyRenderer = go.GetComponent<MeshRenderer>();
-            MakeQuad("NecroHood", new Vector3(0f, 0.45f, 0.01f), new Vector3(0.70f, 0.35f, 1f),
-                     new Color(NecromancerColor.r * 1.4f, NecromancerColor.g * 1.4f, NecromancerColor.b * 1.4f, 1f),
-                     shader, transform);
         }
 
         // ── A6: Boss builds (2×2 placeholder quads) ──────────────────────────
@@ -395,20 +372,48 @@ namespace Mergistry.Views.Combat
         private void UpdateBombColor(int timerValue)
         {
             if (_bodyRenderer == null) return;
-            // timerValue 3 → yellow, 0 → red
             float t = 1f - timerValue / 3f;
-            _bodyRenderer.material.color = Color.Lerp(MushroomYellow, MushroomRed, t);
+            var mat = _bodyRenderer.material;
+            if (mat.HasProperty(PropTimerNorm))
+                mat.SetFloat(PropTimerNorm, t);
+            else
+                mat.color = Color.Lerp(MushroomYellow, MushroomRed, t);
         }
 
         // ── Animations ───────────────────────────────────────────────────────
 
+        private static readonly int PropFlashAmount = Shader.PropertyToID("_FlashAmount");
+        private static readonly int PropTimerNorm   = Shader.PropertyToID("_TimerNorm");
+        private static readonly int PropPullActive  = Shader.PropertyToID("_PullActive");
+        private static readonly int PropFlicker     = Shader.PropertyToID("_Flicker");
+
         private IEnumerator HitFlashRoutine()
         {
-            if (_bodyRenderer != null)
+            if (_bodyRenderer == null) yield break;
+
+            var mat = _bodyRenderer.material;
+            // SDF shaders use _FlashAmount; legacy use color
+            bool hasSdfFlash = mat.HasProperty(PropFlashAmount);
+
+            if (hasSdfFlash)
             {
-                _bodyRenderer.material.color = Color.white;
+                mat.SetFloat(PropFlashAmount, 1f);
+                yield return new WaitForSeconds(0.08f);
+                // decay
+                float elapsed = 0f;
+                while (elapsed < 0.12f)
+                {
+                    elapsed += Time.deltaTime;
+                    mat.SetFloat(PropFlashAmount, 1f - elapsed / 0.12f);
+                    yield return null;
+                }
+                mat.SetFloat(PropFlashAmount, 0f);
+            }
+            else
+            {
+                mat.color = Color.white;
                 yield return new WaitForSeconds(0.1f);
-                _bodyRenderer.material.color = _baseBodyColor;
+                mat.color = _baseBodyColor;
             }
         }
 

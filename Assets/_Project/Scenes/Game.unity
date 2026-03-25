@@ -385,6 +385,7 @@ GameObject:
   - component: {fileID: 731940722}
   - component: {fileID: 731940721}
   - component: {fileID: 731940720}
+  - component: {fileID: 731940723}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -466,6 +467,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &731940723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731940719}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c580f15ca85b9e41bf208b7a83c9623, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Mergistry.Views.PostProcessController
+  bloomEnabled: 1
+  bloomThreshold: 0.8
+  bloomSoftKnee: 0.5
+  bloomIntensity: 1.5
 --- !u!1 &898707648
 GameObject:
   m_ObjectHideFlags: 0
@@ -1152,6 +1169,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Mergistry.UI.Screens.MenuScreenView
   startButton: {fileID: 0}
+  continueButton: {fileID: 0}
 --- !u!114 &1682690583
 MonoBehaviour:
   m_ObjectHideFlags: 0
