@@ -49,6 +49,8 @@
   <ItemGroup>
     <Compile Include="Assets\_Project\Scripts\Data\Enums\PotionType.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\CellContentType.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\CombatModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\GameStates\CombatState\CombatState.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\MenuState\MenuState.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\HUD\ActionCounterView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\BoardModel.cs" />
@@ -58,19 +60,26 @@
     <Compile Include="Assets\_Project\Scripts\Views\Board\IngredientView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BrewView.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\HUD\InventoryView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\CombatService\CombatService.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\PotionSlot.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Screens\MenuScreenView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\CellContent.cs" />
     <Compile Include="Assets\_Project\Scripts\Input\InputService.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\GridModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\PlayerCombatModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\GridView.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\ElementType.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\GameManager.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\FadeView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\GameStateMachine.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotClickHandler.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\EventBus\EventBus.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotReplacePopup.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardDragController.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\Bootstrapper.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\PlayerView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\CombatInputController.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardView.cs" />
     <Compile Include="Assets\_Project\Scripts\Events\GameEvents.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\ServiceLocator\ServiceLocator.cs" />

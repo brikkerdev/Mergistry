@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Mergistry.Core;
 using Mergistry.Models;
 using Mergistry.Services;
+using Mergistry.UI;
 using Mergistry.UI.HUD;
 using Mergistry.UI.Popups;
 using Mergistry.Views.Board;
@@ -20,6 +21,9 @@ namespace Mergistry.GameStates
         private readonly InventoryView       _inventoryView;
         private readonly SlotReplacePopup    _replacePopup;
         private readonly InventoryModel      _inventory;
+        private readonly GameStateMachine    _fsm;
+        private readonly CombatState         _combatState;
+        private readonly FadeView            _fadeView;
 
         private int       _seed;
         private int       _actionsRemaining;
@@ -34,7 +38,10 @@ namespace Mergistry.GameStates
             ActionCounterView   actionCounter,
             InventoryView       inventoryView,
             SlotReplacePopup    replacePopup,
-            InventoryModel      inventory)
+            InventoryModel      inventory,
+            GameStateMachine    fsm,
+            CombatState         combatState,
+            FadeView            fadeView)
         {
             _boardView           = boardView;
             _dragController      = dragController;
@@ -43,6 +50,9 @@ namespace Mergistry.GameStates
             _inventoryView       = inventoryView;
             _replacePopup        = replacePopup;
             _inventory           = inventory;
+            _fsm                 = fsm;
+            _combatState         = combatState;
+            _fadeView            = fadeView;
         }
 
         public void Enter()
@@ -108,8 +118,8 @@ namespace Mergistry.GameStates
             if (_pendingBrews == null || _pendingBrews.Count == 0)
             {
                 _inventoryView.Refresh(_inventory);
-                Debug.Log("[DistillationState] Brews collected. Ready for combat (M3). Restarting distillation for testing.");
-                Enter(); // M2 placeholder: restart distillation until CombatState exists
+                Debug.Log("[DistillationState] Brews collected. Transitioning to CombatState.");
+                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_combatState));
                 return;
             }
 
