@@ -164,6 +164,7 @@ namespace Mergistry.UI.HUD
             handler.OnClicked = () => OnGoBattleClicked?.Invoke();
         }
 
+
         // ── Slot display ─────────────────────────────────────────────────────
 
         private void UpdateSlotDistillation(int index, PotionSlot slot)

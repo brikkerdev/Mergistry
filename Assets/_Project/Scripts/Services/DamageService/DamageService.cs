@@ -35,27 +35,53 @@ namespace Mergistry.Services
         {
             return type switch
             {
-                PotionType.Flame  => Cross(target, 1, grid),
-                PotionType.Stream => Row(target.y, grid),
-                PotionType.Poison => Block2x2(target, grid),
-                PotionType.Steam  => Cross(target, 2, grid),
-                PotionType.Napalm => Box3x3(target, grid),
-                PotionType.Acid   => Column(target.x, grid),
-                _                 => new List<Vector2Int> { target }
+                // ── MVP potions ───────────────────────────────────────────────
+                PotionType.Flame     => Cross(target, 1, grid),
+                PotionType.Stream    => Row(target.y, grid),
+                PotionType.Poison    => Block2x2(target, grid),
+                PotionType.Steam     => Cross(target, 2, grid),
+                PotionType.Napalm    => Box3x3(target, grid),
+                PotionType.Acid      => Column(target.x, grid),
+                // ── A1: Lux/Umbra base brews ──────────────────────────────────
+                PotionType.Radiance  => Diamond(target, 2, grid),
+                PotionType.Gloom     => Box3x3(target, grid),
+                // ── A1: Lux recipe brews ──────────────────────────────────────
+                PotionType.Lightning => RowAndColumn(target, grid),
+                PotionType.Flare     => new List<Vector2Int> { target },
+                PotionType.Spore     => Cross(target, 1, grid),
+                // ── A1: Umbra recipe brews ────────────────────────────────────
+                PotionType.Curse     => new List<Vector2Int> { target },
+                PotionType.Mist      => Row(target.y, grid),
+                PotionType.Miasma    => Block2x2(target, grid),
+                PotionType.Chaos     => RandomAoE(target, grid),
+                _                    => new List<Vector2Int> { target }
             };
         }
 
-        /// <summary>Base damage dealt by a potion.</summary>
+        /// <summary>Base damage dealt by a potion at the given level.</summary>
         public int GetDamage(PotionType type, int level) =>
             type switch
             {
-                PotionType.Flame  => 2 * level,
-                PotionType.Stream => 1 * level,
-                PotionType.Poison => 2 * level,
-                PotionType.Steam  => 1 * level,
-                PotionType.Napalm => 3 * level,
-                PotionType.Acid   => 2 * level,
-                _                 => level
+                // ── MVP potions ───────────────────────────────────────────────
+                PotionType.Flame     => 2 * level,
+                PotionType.Stream    => 1 * level,
+                PotionType.Poison    => 2 * level,
+                PotionType.Steam     => 1 * level,
+                PotionType.Napalm    => 3 * level,
+                PotionType.Acid      => 2 * level,
+                // ── A1: Lux/Umbra base brews ──────────────────────────────────
+                PotionType.Radiance  => 2 * level,
+                PotionType.Gloom     => 2 * level,
+                // ── A1: Lux recipe brews ──────────────────────────────────────
+                PotionType.Lightning => 3 * level,
+                PotionType.Flare     => 4 * level,
+                PotionType.Spore     => 1 * level,
+                // ── A1: Umbra recipe brews ────────────────────────────────────
+                PotionType.Curse     => 3 * level,
+                PotionType.Mist      => 1 * level,
+                PotionType.Miasma    => 2 * level,
+                PotionType.Chaos     => Random.Range(1, 5) * level,
+                _                    => level
             };
 
         // ── Damage application ──────────────────────────────────────────────────
@@ -142,6 +168,44 @@ namespace Mergistry.Services
             for (int dy = -1; dy <= 1; dy++)
                 AddIfInBounds(cells, new Vector2Int(center.x + dx, center.y + dy), grid);
             return cells;
+        }
+
+        /// <summary>All cells within Manhattan distance ≤ radius (diamond/rhombus shape).</summary>
+        private static List<Vector2Int> Diamond(Vector2Int center, int radius, GridModel grid)
+        {
+            var cells = new List<Vector2Int>();
+            for (int dx = -radius; dx <= radius; dx++)
+            for (int dy = -radius; dy <= radius; dy++)
+                if (Mathf.Abs(dx) + Mathf.Abs(dy) <= radius)
+                    AddIfInBounds(cells, new Vector2Int(center.x + dx, center.y + dy), grid);
+            return cells;
+        }
+
+        /// <summary>Entire row + entire column through target (cross of full lines).</summary>
+        private static List<Vector2Int> RowAndColumn(Vector2Int target, GridModel grid)
+        {
+            var cells = Row(target.y, grid);
+            for (int y = 0; y < GridModel.Height; y++)
+            {
+                var c = new Vector2Int(target.x, y);
+                if (!cells.Contains(c)) cells.Add(c);
+            }
+            return cells;
+        }
+
+        /// <summary>Randomly picks one of the available AoE patterns at runtime (Chaos potion).</summary>
+        private List<Vector2Int> RandomAoE(Vector2Int target, GridModel grid)
+        {
+            int roll = Random.Range(0, 6);
+            return roll switch
+            {
+                0 => Cross(target, 1, grid),
+                1 => Row(target.y, grid),
+                2 => Block2x2(target, grid),
+                3 => Cross(target, 2, grid),
+                4 => Box3x3(target, grid),
+                _ => Column(target.x, grid),
+            };
         }
 
         private static void AddIfInBounds(List<Vector2Int> list, Vector2Int cell, GridModel grid)

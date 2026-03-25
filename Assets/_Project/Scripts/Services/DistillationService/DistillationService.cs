@@ -7,15 +7,21 @@ namespace Mergistry.Services
 {
     public class DistillationService
     {
-        private static readonly ElementType[] BaseElements =
+        // Element pools per floor: floor 0 = 3 elements, floor 1 = 4, floor 2+ = 5
+        private static readonly ElementType[] FloorElements0 =
             { ElementType.Ignis, ElementType.Aqua, ElementType.Toxin };
+        private static readonly ElementType[] FloorElements1 =
+            { ElementType.Ignis, ElementType.Aqua, ElementType.Toxin, ElementType.Lux };
+        private static readonly ElementType[] FloorElements2 =
+            { ElementType.Ignis, ElementType.Aqua, ElementType.Toxin, ElementType.Lux, ElementType.Umbra };
 
         // ── Board Generation ─────────────────────────────────────────────────
 
-        public BoardModel GenerateBoard(int seed = 0)
+        public BoardModel GenerateBoard(int seed = 0, int floor = 0)
         {
-            var board = new BoardModel();
-            var rng   = new Random(seed);
+            var elements = floor switch { 0 => FloorElements0, 1 => FloorElements1, _ => FloorElements2 };
+            var board    = new BoardModel();
+            var rng      = new Random(seed);
 
             var positions = new List<(int x, int y)>();
             for (int x = 0; x < BoardModel.Size; x++)
@@ -29,11 +35,11 @@ namespace Mergistry.Services
                 (positions[i], positions[j]) = (positions[j], positions[i]);
             }
 
-            // Distribute 3 elements evenly across 16 cells
+            // Distribute elements evenly: 16 cells / N elements (cycle via modulo)
             for (int i = 0; i < positions.Count; i++)
             {
-                var elem     = BaseElements[i % BaseElements.Length];
-                var (x, y)   = positions[i];
+                var elem   = elements[i % elements.Length];
+                var (x, y) = positions[i];
                 board.Set(x, y, CellContent.Ingredient(elem));
             }
 
@@ -128,17 +134,30 @@ namespace Mergistry.Services
             {
                 return a switch
                 {
-                    ElementType.Ignis => (PotionType.Flame,  ElementType.Ignis),
-                    ElementType.Aqua  => (PotionType.Stream, ElementType.Aqua),
-                    ElementType.Toxin => (PotionType.Poison, ElementType.Toxin),
-                    _                 => (PotionType.None,   ElementType.None),
+                    ElementType.Ignis => (PotionType.Flame,    ElementType.Ignis),
+                    ElementType.Aqua  => (PotionType.Stream,   ElementType.Aqua),
+                    ElementType.Toxin => (PotionType.Poison,   ElementType.Toxin),
+                    ElementType.Lux   => (PotionType.Radiance, ElementType.Lux),
+                    ElementType.Umbra => (PotionType.Gloom,    ElementType.Umbra),
+                    _                 => (PotionType.None,     ElementType.None),
                 };
             }
 
-            // Mixed recipes (order-independent)
+            // Mixed recipes (order-independent) ── existing ───────────────────
             if (Matches(a, b, ElementType.Aqua,  ElementType.Ignis)) return (PotionType.Steam,  ElementType.None);
             if (Matches(a, b, ElementType.Ignis, ElementType.Toxin)) return (PotionType.Napalm, ElementType.None);
             if (Matches(a, b, ElementType.Aqua,  ElementType.Toxin)) return (PotionType.Acid,   ElementType.None);
+
+            // Mixed recipes ── A1: Lux combinations ───────────────────────────
+            if (Matches(a, b, ElementType.Aqua,  ElementType.Lux))   return (PotionType.Lightning, ElementType.None);
+            if (Matches(a, b, ElementType.Ignis, ElementType.Lux))   return (PotionType.Flare,     ElementType.None);
+            if (Matches(a, b, ElementType.Toxin, ElementType.Lux))   return (PotionType.Spore,     ElementType.None);
+
+            // Mixed recipes ── A1: Umbra combinations ─────────────────────────
+            if (Matches(a, b, ElementType.Ignis, ElementType.Umbra)) return (PotionType.Curse,  ElementType.None);
+            if (Matches(a, b, ElementType.Aqua,  ElementType.Umbra)) return (PotionType.Mist,   ElementType.None);
+            if (Matches(a, b, ElementType.Toxin, ElementType.Umbra)) return (PotionType.Miasma, ElementType.None);
+            if (Matches(a, b, ElementType.Lux,   ElementType.Umbra)) return (PotionType.Chaos,  ElementType.None);
 
             return (PotionType.None, ElementType.None);
         }

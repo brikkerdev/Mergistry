@@ -7,12 +7,14 @@ namespace Mergistry.Models
     public class RunModel
     {
         public int  CurrentFight { get; set; } = 0;   // 0 = fight 1, 1 = fight 2, 2 = fight 3
+        public int  CurrentFloor { get; set; } = 0;   // 0, 1, 2 — controls element pool (3/4/5)
         public int  PersistentHP { get; set; } = 5;
         public bool LastVictory  { get; set; } = false;
 
         public void Reset()
         {
             CurrentFight = 0;
+            CurrentFloor = 0;
             PersistentHP = 5;
             LastVictory  = false;
         }

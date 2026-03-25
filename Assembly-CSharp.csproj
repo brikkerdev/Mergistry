@@ -52,6 +52,7 @@
     <Compile Include="Assets\_Project\Scripts\Views\Combat\EnemyView.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\CellContentType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\CombatModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\Screens\BookScreen.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\CombatState\CombatState.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\MenuState\MenuState.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\HUD\ActionCounterView.cs" />
@@ -67,6 +68,7 @@
     <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyCombatModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\CombatService\CombatService.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\PotionSlot.cs" />
+    <Compile Include="Assets\_Project\Scripts\Data\PotionDatabase.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Screens\MenuScreenView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\IntentType.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
@@ -86,8 +88,8 @@
     <Compile Include="Assets\_Project\Scripts\Core\EventBus\EventBus.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotReplacePopup.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardDragController.cs" />
-    <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyType.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\SkipTurnButtonView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyType.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\Bootstrapper.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\HUD\HealthBarView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\PlayerView.cs" />

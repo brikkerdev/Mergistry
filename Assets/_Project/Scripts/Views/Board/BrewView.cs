@@ -101,13 +101,26 @@ namespace Mergistry.Views.Board
 
         public static Color GetBrewColor(PotionType type) => type switch
         {
-            PotionType.Flame  => new Color(0.90f, 0.35f, 0.10f),
-            PotionType.Stream => new Color(0.15f, 0.45f, 0.85f),
-            PotionType.Poison => new Color(0.20f, 0.70f, 0.20f),
-            PotionType.Steam  => new Color(0.80f, 0.80f, 0.85f),
-            PotionType.Napalm => new Color(0.90f, 0.55f, 0.10f),
-            PotionType.Acid   => new Color(0.55f, 0.90f, 0.15f),
-            _                 => Color.grey,
+            // ── MVP ───────────────────────────────────────────────────────────
+            PotionType.Flame     => new Color(0.90f, 0.35f, 0.10f),
+            PotionType.Stream    => new Color(0.15f, 0.45f, 0.85f),
+            PotionType.Poison    => new Color(0.20f, 0.70f, 0.20f),
+            PotionType.Steam     => new Color(0.80f, 0.80f, 0.85f),
+            PotionType.Napalm    => new Color(0.90f, 0.55f, 0.10f),
+            PotionType.Acid      => new Color(0.55f, 0.90f, 0.15f),
+            // ── A1: Lux/Umbra base brews ──────────────────────────────────────
+            PotionType.Radiance  => new Color(0.95f, 0.90f, 0.30f),  // золотой
+            PotionType.Gloom     => new Color(0.38f, 0.10f, 0.58f),  // тёмно-фиолетовый
+            // ── A1: Lux recipe brews ──────────────────────────────────────────
+            PotionType.Lightning => new Color(0.50f, 0.85f, 1.00f),  // электрик
+            PotionType.Flare     => new Color(1.00f, 0.78f, 0.20f),  // яркий оранж
+            PotionType.Spore     => new Color(0.60f, 0.95f, 0.40f),  // светло-зелёный
+            // ── A1: Umbra recipe brews ────────────────────────────────────────
+            PotionType.Curse     => new Color(0.70f, 0.15f, 0.30f),  // тёмно-красный
+            PotionType.Mist      => new Color(0.65f, 0.78f, 0.92f),  // бледно-голубой
+            PotionType.Miasma    => new Color(0.42f, 0.72f, 0.28f),  // мутно-зелёный
+            PotionType.Chaos     => new Color(0.82f, 0.22f, 0.90f),  // маджента
+            _                    => Color.grey,
         };
 
         // ── Helpers ──────────────────────────────────────────────────────────

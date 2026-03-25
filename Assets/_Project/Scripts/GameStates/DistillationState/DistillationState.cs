@@ -5,8 +5,10 @@ using Mergistry.Services;
 using Mergistry.UI;
 using Mergistry.UI.HUD;
 using Mergistry.UI.Popups;
+using Mergistry.UI.Screens;
 using Mergistry.Views.Board;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Mergistry.GameStates
 {
@@ -24,10 +26,13 @@ namespace Mergistry.GameStates
         private readonly GameStateMachine    _fsm;
         private readonly CombatState         _combatState;
         private readonly FadeView            _fadeView;
+        private readonly RunModel            _runModel;
+        private readonly BookScreen          _bookScreen;
 
-        private int       _seed;
-        private int       _actionsRemaining;
+        private int        _seed;
+        private int        _actionsRemaining;
         private BoardModel _currentBoard;
+        private GameObject _bookButtonGo;  // top-right corner book button (created once)
 
         private Queue<DistillationService.BrewEntry> _pendingBrews;
 
@@ -41,7 +46,9 @@ namespace Mergistry.GameStates
             InventoryModel      inventory,
             GameStateMachine    fsm,
             CombatState         combatState,
-            FadeView            fadeView)
+            FadeView            fadeView,
+            RunModel            runModel,
+            BookScreen          bookScreen)
         {
             _boardView           = boardView;
             _dragController      = dragController;
@@ -53,12 +60,14 @@ namespace Mergistry.GameStates
             _fsm                 = fsm;
             _combatState         = combatState;
             _fadeView            = fadeView;
+            _runModel            = runModel;
+            _bookScreen          = bookScreen;
         }
 
         public void Enter()
         {
             _actionsRemaining = MaxActions;
-            _currentBoard     = _distillationService.GenerateBoard(_seed++);
+            _currentBoard     = _distillationService.GenerateBoard(_seed++, _runModel.CurrentFloor);
 
             _boardView.gameObject.SetActive(true);
             _boardView.Initialize(_currentBoard);
@@ -74,7 +83,12 @@ namespace Mergistry.GameStates
             _inventoryView.OnGoBattleClicked -= OnGoBattleClicked;
             _inventoryView.OnGoBattleClicked += OnGoBattleClicked;
 
+            EnsureBookButton();
+            _bookButtonGo.SetActive(true);
+            _bookScreen.Hide();
             _fadeView.FadeIn(0.2f, null);
+
+            Debug.Log($"[DistillationState] Floor {_runModel.CurrentFloor} — {(new[] { 3, 4, 5 }[Mathf.Min(_runModel.CurrentFloor, 2)])} elements on board.");
         }
 
         public void Exit()
@@ -85,9 +99,94 @@ namespace Mergistry.GameStates
             _actionCounter.gameObject.SetActive(false);
             _inventoryView.gameObject.SetActive(false);
             _replacePopup.Hide();
+            if (_bookButtonGo != null) _bookButtonGo.SetActive(false);
+            _bookScreen.Hide();
         }
 
-        public void Tick() { }
+        public void Tick()
+        {
+#if UNITY_EDITOR
+            // Debug: F1/F2/F3 force-switch floor and regenerate board
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            if (kb[Key.F1].wasPressedThisFrame) SetDebugFloor(0);
+            if (kb[Key.F2].wasPressedThisFrame) SetDebugFloor(1);
+            if (kb[Key.F3].wasPressedThisFrame) SetDebugFloor(2);
+#endif
+        }
+
+#if UNITY_EDITOR
+        private void SetDebugFloor(int floor)
+        {
+            _runModel.CurrentFloor = floor;
+            _currentBoard = _distillationService.GenerateBoard(_seed++, floor);
+            _boardView.Initialize(_currentBoard);
+            _dragController.Initialize(_boardView, _currentBoard, _distillationService, OnActionUsed);
+            _actionsRemaining = MaxActions;
+            _actionCounter.Refresh(_actionsRemaining);
+            Debug.Log($"[DEBUG] Switched to floor {floor} — board regenerated.");
+        }
+#endif
+
+        // ── Book button ──────────────────────────────────────────────────────
+
+        private void EnsureBookButton()
+        {
+            if (_bookButtonGo != null) return;
+
+            // Place in top-right corner using camera viewport
+            var cam      = Camera.main;
+            var topRight = cam.ViewportToWorldPoint(new Vector3(1f, 1f, Mathf.Abs(cam.transform.position.z)));
+            var pos      = new Vector3(topRight.x - 0.52f, topRight.y - 0.38f, -0.5f);
+
+            _bookButtonGo = new GameObject("BookButton_Distillation");
+
+            // Background
+            var bg = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            bg.name = "BG";
+            bg.transform.SetParent(_bookButtonGo.transform);
+            bg.transform.localPosition = new Vector3(0f, 0f, 0.01f);
+            bg.transform.localScale    = new Vector3(0.80f, 0.52f, 1f);
+            Object.Destroy(bg.GetComponent<MeshCollider>());
+            var bgR = bg.GetComponent<MeshRenderer>();
+            bgR.material = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.20f, 0.18f, 0.35f) };
+            bgR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            bgR.receiveShadows    = false;
+
+            // Face
+            var face = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            face.name = "Face";
+            face.transform.SetParent(_bookButtonGo.transform);
+            face.transform.localPosition = Vector3.zero;
+            face.transform.localScale    = new Vector3(0.70f, 0.44f, 1f);
+            Object.Destroy(face.GetComponent<MeshCollider>());
+            var faceR = face.GetComponent<MeshRenderer>();
+            faceR.material = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.35f, 0.28f, 0.60f) };
+            faceR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            faceR.receiveShadows    = false;
+
+            // Label
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(_bookButtonGo.transform);
+            labelGo.transform.localPosition = new Vector3(0f, 0f, -0.01f);
+            labelGo.transform.localScale    = Vector3.one * 0.016f;
+            var tm = labelGo.AddComponent<TextMesh>();
+            tm.text      = "RB";
+            tm.fontSize  = 100;
+            tm.fontStyle = FontStyle.Bold;
+            tm.color     = new Color(0.92f, 0.88f, 0.50f);
+            tm.anchor    = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+
+            // Collider + click
+            var col  = _bookButtonGo.AddComponent<BoxCollider>();
+            col.size = new Vector3(0.80f, 0.52f, 0.1f);
+
+            var handler      = _bookButtonGo.AddComponent<UI.Popups.SlotClickHandler>();
+            handler.OnClicked = () => _bookScreen.Toggle();
+
+            _bookButtonGo.transform.position = pos;
+        }
 
         // ── Callbacks ────────────────────────────────────────────────────────
 

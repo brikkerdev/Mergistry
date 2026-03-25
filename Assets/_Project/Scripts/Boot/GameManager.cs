@@ -10,6 +10,7 @@ using Mergistry.Views.Board;
 using Mergistry.Views.Combat;
 using UnityEngine;
 
+
 namespace Mergistry.Boot
 {
     /// <summary>
@@ -114,6 +115,10 @@ namespace Mergistry.Boot
             var runModel  = new RunModel();
             inventoryView.Refresh(inventory);
 
+            // ── BookScreen (created programmatically, no scene GO needed) ─────
+            var bookScreenGo = new GameObject("BookScreen");
+            var bookScreen   = bookScreenGo.AddComponent<BookScreen>();
+
             // ── States ────────────────────────────────────────────────────────
             var combatState = new CombatState(
                 gridView, playerView, combatInput,
@@ -125,7 +130,8 @@ namespace Mergistry.Boot
             var distillationState = new DistillationState(
                 boardView, dragController, distillationService,
                 actionCounter, inventoryView, replacePopup, inventory,
-                _fsm, combatState, fadeView);
+                _fsm, combatState, fadeView,
+                runModel, bookScreen);
 
             var menuState = new MenuState(menuScreenView, _fsm, distillationState, fadeView);
 
