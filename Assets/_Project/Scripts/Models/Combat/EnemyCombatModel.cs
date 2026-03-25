@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Mergistry.Data;
 using UnityEngine;
 
 namespace Mergistry.Models.Combat
@@ -18,6 +20,14 @@ namespace Mergistry.Models.Combat
         // A2: countdown timer for MushroomBomb (starts at 3)
         public int         BombTimer   { get; set; }
 
+        // A3: status effects (Slow, Stun, Poison)
+        public List<StatusEffect> StatusEffects { get; } = new List<StatusEffect>();
+
+        // A3: MirrorSlime — copied potion from last player throw
+        public bool        HasCopiedPotion   { get; set; }
+        public PotionType  CopiedPotionType  { get; set; }
+        public int         CopiedPotionLevel { get; set; }
+
         public EnemyCombatModel(int id, EnemyType type, Vector2Int pos, int hp,
                                 int armorPoints = 0, int bombTimer = 3)
         {
@@ -29,5 +39,9 @@ namespace Mergistry.Models.Combat
             ArmorPoints = armorPoints;
             BombTimer   = bombTimer;
         }
+
+        // A3: status helpers
+        public bool HasStatus(StatusEffectType t) =>
+            StatusEffects.Exists(s => s.Type == t && s.Duration > 0);
     }
 }

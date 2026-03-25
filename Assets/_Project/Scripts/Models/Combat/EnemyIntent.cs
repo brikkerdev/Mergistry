@@ -10,5 +10,6 @@ namespace Mergistry.Models.Combat
         public List<Vector2Int> AttackCells { get; set; } = new List<Vector2Int>();
         public int            Damage         { get; set; }
         public int            CountdownValue { get; set; } // for Countdown intent display
+        public int            ReviveEntityId { get; set; } = -1; // for Revive intent
     }
 }

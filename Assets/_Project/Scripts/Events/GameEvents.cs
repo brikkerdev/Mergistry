@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mergistry.Data;
+using Mergistry.Models.Combat;
 using UnityEngine;
 
 namespace Mergistry.Events
@@ -65,6 +66,34 @@ namespace Mergistry.Events
     public struct CombatEndedEvent
     {
         public bool Victory;
+    }
+
+    // --- Combat: A3 zones ---
+    public struct ZoneCreatedEvent
+    {
+        public ZoneType             Type;
+        public List<Vector2Int>     Positions;
+        public int                  TurnsRemaining;
+    }
+
+    public struct ZoneExpiredEvent
+    {
+        public Vector2Int Position;
+        public ZoneType   Type;
+    }
+
+    // --- Combat: A3 enemies ---
+    public struct EnemyTeleportedEvent
+    {
+        public int        EntityId;
+        public Vector2Int FromPos;
+        public Vector2Int ToPos;
+    }
+
+    public struct EnemyRevivedEvent
+    {
+        public int        EntityId;
+        public Vector2Int Position;
     }
 
     // --- Game Flow ---

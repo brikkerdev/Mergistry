@@ -38,9 +38,12 @@ namespace Mergistry.GameStates
         private GameStateMachine  _fsm;
 
         // ── State ──────────────────────────────────────────────────────────────
-        private CombatModel                      _model;
-        private int                              _selectedSlot = -1;
+        private CombatModel                         _model;
+        private int                                 _selectedSlot = -1;
         private readonly Dictionary<int, EnemyView> _enemyViews = new Dictionary<int, EnemyView>();
+
+        // A3: zone overlay views keyed by (x * GridModel.Height + y)
+        private readonly Dictionary<int, ZoneOverlayView> _zoneOverlays = new Dictionary<int, ZoneOverlayView>();
 
         private enum TurnPhase { PlayerTurn, EnemyTurn }
         private TurnPhase _phase;
@@ -128,6 +131,15 @@ namespace Mergistry.GameStates
                 case EnemyType.ArmoredBeetle:
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 4, armorPoints: 2);
                     break;
+                case EnemyType.MirrorSlime:
+                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 4);
+                    break;
+                case EnemyType.Phantom:
+                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 3);
+                    break;
+                case EnemyType.Necromancer:
+                    enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 5);
+                    break;
                 default: // Skeleton
                     enemy = new EnemyCombatModel(_model.NextEntityId(), type, pos, hp: 3);
                     break;
@@ -143,6 +155,7 @@ namespace Mergistry.GameStates
             if (_model == null) return;
             DestroyAllEnemyViews();
             _model.Enemies.Clear();
+            _model.Graveyard.Clear();
             _combatService.SpawnEnemies(_model, fightIndex);
             SpawnEnemyViews();
             _aiService.DetermineIntents(_model);
@@ -162,9 +175,7 @@ namespace Mergistry.GameStates
         public void Debug_FillInventory(PotionType type, int level)
         {
             for (int i = 0; i < InventoryModel.SlotCount; i++)
-            {
                 _inventory.Replace(i, type, level);
-            }
             _inventoryView.RefreshCombat(_inventory, -1);
         }
 
@@ -225,6 +236,7 @@ namespace Mergistry.GameStates
             EventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
             EventBus.Subscribe<BombExplodedEvent>(OnBombExploded);
             EventBus.Subscribe<ArmorRemovedEvent>(OnArmorRemoved);
+            EventBus.Subscribe<EnemyRevivedEvent>(OnEnemyRevived);   // A3
 
             SpawnEnemyViews();
 
@@ -242,6 +254,7 @@ namespace Mergistry.GameStates
             EventBus.Unsubscribe<PlayerDamagedEvent>(OnPlayerDamaged);
             EventBus.Unsubscribe<BombExplodedEvent>(OnBombExploded);
             EventBus.Unsubscribe<ArmorRemovedEvent>(OnArmorRemoved);
+            EventBus.Unsubscribe<EnemyRevivedEvent>(OnEnemyRevived); // A3
 
             _inputController.SetActive(false);
             _inputController.OnMoveRequested = null;
@@ -259,6 +272,7 @@ namespace Mergistry.GameStates
             _gridView.ClearIntentHighlights();
 
             DestroyAllEnemyViews();
+            DestroyAllZoneOverlays(); // A3
 
             _gridView.gameObject.SetActive(false);
             _playerView.gameObject.SetActive(false);
@@ -301,16 +315,13 @@ namespace Mergistry.GameStates
             var enemy = _model.Enemies.FirstOrDefault(e => e.EntityId == entityId && !e.IsDead);
             if (enemy == null) return;
 
-            // Push must target an adjacent enemy
             if (Manhattan(enemy.Position, _model.Player.Position) > 1) return;
 
             var result = _combatService.PushEnemy(_model, enemy, direction);
 
-            // Update view with push animation
             if (_enemyViews.TryGetValue(entityId, out var view))
                 view.PlayPushAnimation(_gridView.GridToWorld(enemy.Position));
 
-            // Wall hit → +1 bonus damage
             if (result.BonusDamage > 0)
             {
                 _damageService.ApplyDamage(enemy, result.BonusDamage);
@@ -375,12 +386,27 @@ namespace Mergistry.GameStates
             if (slot.Type == PotionType.Acid)
             {
                 foreach (var enemy in _model.Enemies.ToList())
-                {
                     if (!enemy.IsDead && aoeCells.Contains(enemy.Position))
                         _damageService.RemoveArmor(enemy);
-                }
             }
 
+            // A3: Flare stuns enemies in AoE
+            if (slot.Type == PotionType.Flare)
+            {
+                foreach (var enemy in _model.Enemies)
+                    if (!enemy.IsDead && aoeCells.Contains(enemy.Position))
+                        ApplyStatusToEnemy(enemy, StatusEffectType.Stun, 1);
+            }
+
+            // A3: Poison/Napalm applies Poison DoT to enemies in AoE
+            if (slot.Type == PotionType.Poison || slot.Type == PotionType.Napalm)
+            {
+                foreach (var enemy in _model.Enemies)
+                    if (!enemy.IsDead && aoeCells.Contains(enemy.Position))
+                        ApplyStatusToEnemy(enemy, StatusEffectType.Poison, 3);
+            }
+
+            // Damage all enemies in AoE
             foreach (var enemy in _model.Enemies.ToList())
             {
                 if (!enemy.IsDead && aoeCells.Contains(enemy.Position))
@@ -393,6 +419,9 @@ namespace Mergistry.GameStates
 
             _combatService.ThrowPotion(_model, _inventory, _selectedSlot, cell);
 
+            // A3: Create zones from certain potions
+            CreateZonesFromPotion(slot.Type, aoeCells);
+
             _selectedSlot = -1;
             _gridView.ClearHighlights();
             _inventoryView.RefreshCombat(_inventory, -1);
@@ -400,6 +429,77 @@ namespace Mergistry.GameStates
             Debug.Log($"[CombatState] Threw {slot.Type} lv{slot.Level} at {cell}");
 
             _gridView.Run(EnemyTurnRoutine());
+        }
+
+        // ── A3: Zone creation ─────────────────────────────────────────────────
+
+        private void CreateZonesFromPotion(PotionType type, List<Vector2Int> aoeCells)
+        {
+            ZoneType? zoneType = type switch
+            {
+                PotionType.Flame  => ZoneType.Fire,
+                PotionType.Napalm => ZoneType.Fire,
+                PotionType.Stream => ZoneType.Water,
+                PotionType.Poison => ZoneType.Poison,
+                PotionType.Mist   => ZoneType.Poison,
+                _                 => (ZoneType?)null
+            };
+
+            if (zoneType == null) return;
+
+            int turns = zoneType == ZoneType.Water ? 3 : 2;
+            if (type == PotionType.Poison || type == PotionType.Mist) turns = 3;
+
+            foreach (var cell in aoeCells)
+            {
+                _model.Grid.AddZone(zoneType.Value, cell, turns);
+                SpawnOrRefreshZoneOverlay(zoneType.Value, cell);
+            }
+
+            EventBus.Publish(new ZoneCreatedEvent
+            {
+                Type           = zoneType.Value,
+                Positions      = aoeCells,
+                TurnsRemaining = turns
+            });
+
+            Debug.Log($"[CombatState] Created {zoneType} zone on {aoeCells.Count} cells");
+        }
+
+        private void SpawnOrRefreshZoneOverlay(ZoneType type, Vector2Int cell)
+        {
+            int key = cell.x * GridModel.Height + cell.y;
+
+            if (_zoneOverlays.TryGetValue(key, out var existing))
+            {
+                if (existing != null)
+                    Object.Destroy(existing.gameObject);
+                _zoneOverlays.Remove(key);
+            }
+
+            var go   = new GameObject($"Zone_{type}_{cell.x}_{cell.y}");
+            go.transform.SetParent(_gridView.transform.parent);
+
+            var overlay = go.AddComponent<ZoneOverlayView>();
+            overlay.Initialize(type, _gridView.GridToWorld(cell));
+            _zoneOverlays[key] = overlay;
+        }
+
+        private void RemoveZoneOverlay(Vector2Int cell)
+        {
+            int key = cell.x * GridModel.Height + cell.y;
+            if (_zoneOverlays.TryGetValue(key, out var overlay))
+            {
+                if (overlay != null) Object.Destroy(overlay.gameObject);
+                _zoneOverlays.Remove(key);
+            }
+        }
+
+        private void DestroyAllZoneOverlays()
+        {
+            foreach (var kv in _zoneOverlays)
+                if (kv.Value != null) Object.Destroy(kv.Value.gameObject);
+            _zoneOverlays.Clear();
         }
 
         // ── Skip turn ─────────────────────────────────────────────────────────
@@ -443,7 +543,6 @@ namespace Mergistry.GameStates
 
         private void OnBombExploded(BombExplodedEvent e)
         {
-            // Visual: show explosion AoE
             _gridView.SetAoeHighlightsTemporary(e.AffectedCells, 0.5f);
             foreach (var cell in e.AffectedCells)
                 _effectView.PlayEffect(_gridView.GridToWorld(cell), new Color(1f, 0.4f, 0f));
@@ -451,11 +550,27 @@ namespace Mergistry.GameStates
 
         private void OnArmorRemoved(ArmorRemovedEvent e)
         {
-            // Update armor indicator on the view
             var enemy = _model.Enemies.FirstOrDefault(en => en.EntityId == e.EntityId);
             if (enemy == null) return;
             if (_enemyViews.TryGetValue(e.EntityId, out var view))
                 view.UpdateArmor(enemy.ArmorPoints);
+        }
+
+        // A3: Necromancer revived an enemy — spawn a new view for it
+        private void OnEnemyRevived(EnemyRevivedEvent e)
+        {
+            var enemy = _model.Enemies.FirstOrDefault(en => en.EntityId == e.EntityId);
+            if (enemy == null) return;
+
+            // Remove stale view if somehow it still exists
+            if (_enemyViews.TryGetValue(e.EntityId, out var old) && old != null)
+            {
+                Object.Destroy(old.gameObject);
+                _enemyViews.Remove(e.EntityId);
+            }
+
+            SpawnViewForEnemy(enemy);
+            Debug.Log($"[CombatState] Spawned view for revived enemy {e.EntityId} at {e.Position}");
         }
 
         // ── Enemy turn coroutine ───────────────────────────────────────────────
@@ -478,7 +593,7 @@ namespace Mergistry.GameStates
 
             _aiService.ExecuteIntents(_model);
 
-            // Update all enemy positions
+            // Update all enemy positions (includes Phantom teleport, Necromancer move)
             foreach (var enemy in _model.Enemies)
             {
                 if (_enemyViews.TryGetValue(enemy.EntityId, out var view))
@@ -490,7 +605,26 @@ namespace Mergistry.GameStates
 
             yield return new WaitForSeconds(0.15f);
 
-            // Remove bombs that just exploded (HP=0 after Explode intent)
+            // A3: Apply zone effects (Fire/Poison DoT, Water Slow)
+            _combatService.ApplyZoneEffects(_model, _damageService);
+
+            // Sync HP bar after zone damage
+            if (_healthBarView != null)
+                _healthBarView.Refresh(_model.Player.HP, _model.Player.MaxHP);
+
+            // A3: Tick zone durations — remove expired zones and their overlays
+            var expiredZones = _combatService.TickZones(_model.Grid);
+            foreach (var z in expiredZones)
+                RemoveZoneOverlay(z.Position);
+
+            // A3: Tick status effect durations + Poison DoT
+            _combatService.TickStatuses(_model, _damageService);
+
+            // Sync HP bar after poison DoT
+            if (_healthBarView != null)
+                _healthBarView.Refresh(_model.Player.HP, _model.Player.MaxHP);
+
+            // Remove bombs that just exploded, enemies killed by zone/poison DoT
             RemoveDeadEnemies();
 
             _combatService.StartNextPlayerTurn(_model, _inventory);
@@ -530,16 +664,9 @@ namespace Mergistry.GameStates
             _runModel.PersistentHP = _model.Player.HP;
             _runModel.CurrentFight++;
 
-            if (_runModel.CurrentFight >= 3)
-            {
-                _runModel.LastVictory = true;
-                _fadeView.FadeOut(0.3f, () => _fsm.ChangeState(_resultState));
-            }
-            else
-            {
-                _runModel.LastVictory = false;
-                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_distillationState));
-            }
+            // Always go back to distillation for now (no run-end condition during Alpha testing)
+            _runModel.LastVictory = false;
+            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_distillationState));
         }
 
         private void OnCombatDefeat()
@@ -580,12 +707,14 @@ namespace Mergistry.GameStates
             foreach (var d in dead)
             {
                 _model.Enemies.Remove(d);
+                _model.Graveyard.Add(d); // A3: keep for Necromancer to revive
+
                 if (_enemyViews.TryGetValue(d.EntityId, out var view))
                 {
                     view.PlayDeathFade(() => Object.Destroy(view.gameObject));
                     _enemyViews.Remove(d.EntityId);
                 }
-                Debug.Log($"[CombatState] Enemy {d.EntityId} ({d.Type}) removed");
+                Debug.Log($"[CombatState] Enemy {d.EntityId} ({d.Type}) removed → graveyard");
             }
         }
 
@@ -609,12 +738,24 @@ namespace Mergistry.GameStates
                     view.SetIntent(enemy.Intent);
 
                 if (enemy.Intent.Type == IntentType.Attack ||
-                    enemy.Intent.Type == IntentType.Explode)
+                    enemy.Intent.Type == IntentType.Explode ||
+                    enemy.Intent.Type == IntentType.Teleport) // A3: show phantom ring
                     attackCells.AddRange(enemy.Intent.AttackCells);
             }
 
             if (attackCells.Count > 0)
                 _gridView.SetIntentHighlights(attackCells);
+        }
+
+        // ── A3: status application helper ─────────────────────────────────────
+
+        private static void ApplyStatusToEnemy(EnemyCombatModel enemy, StatusEffectType type, int duration)
+        {
+            var existing = enemy.StatusEffects.Find(s => s.Type == type);
+            if (existing != null)
+                existing.Duration = Mathf.Max(existing.Duration, duration);
+            else
+                enemy.StatusEffects.Add(new StatusEffect(type, duration));
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

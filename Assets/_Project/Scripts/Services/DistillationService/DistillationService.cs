@@ -84,9 +84,18 @@ namespace Mergistry.Services
             if (to.Type   != CellContentType.Brew)       return false;
             if (to.BrewLevel >= 3)                        return false;
 
-            // Mixed brews (ElementType.None) cannot be infused
-            return to.ElementType != ElementType.None &&
-                   from.ElementType == to.ElementType;
+            // Base brew: ingredient element must match the brew's element
+            if (to.ElementType != ElementType.None)
+                return from.ElementType == to.ElementType;
+
+            // Recipe brew: ingredient must be one of the two elements used in the recipe
+            foreach (var entry in PotionDatabase.All)
+            {
+                if (entry.Type == to.PotionType)
+                    return from.ElementType == entry.IngredientA ||
+                           from.ElementType == entry.IngredientB;
+            }
+            return false;
         }
 
         /// <summary>Performs infuse; updates BoardModel. Returns new brew level.</summary>

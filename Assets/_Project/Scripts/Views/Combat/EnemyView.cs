@@ -25,6 +25,11 @@ namespace Mergistry.Views.Combat
         private static readonly Color CountdownIconColor = new Color(0.95f, 0.65f, 0.10f);
         private static readonly Color ExplodeIconColor   = new Color(1.00f, 0.10f, 0.00f);
         private static readonly Color PullIconColor      = new Color(0.30f, 0.70f, 1.00f);
+        private static readonly Color TeleportIconColor  = new Color(0.70f, 0.20f, 1.00f);
+        private static readonly Color ReviveIconColor    = new Color(0.20f, 0.90f, 0.50f);
+        private static readonly Color MirrorSlimeColor   = new Color(0.50f, 0.80f, 0.90f);
+        private static readonly Color PhantomColor       = new Color(0.75f, 0.60f, 0.95f);
+        private static readonly Color NecromancerColor   = new Color(0.30f, 0.15f, 0.50f);
 
         public int EntityId { get; private set; }
 
@@ -63,6 +68,9 @@ namespace Mergistry.Views.Combat
                     BuildArmoredBeetle();
                     BuildArmorIndicators(enemy.ArmorPoints);
                     break;
+                case EnemyType.MirrorSlime:   BuildMirrorSlime();   break;
+                case EnemyType.Phantom:       BuildPhantom();       break;
+                case EnemyType.Necromancer:   BuildNecromancer();   break;
             }
 
             BuildIntentIcon();
@@ -129,6 +137,16 @@ namespace Mergistry.Views.Combat
                 case IntentType.Pull:
                     _intentIconRenderer.material.color = PullIconColor;
                     _intentText.text = "<";
+                    HideTimer();
+                    break;
+                case IntentType.Teleport:
+                    _intentIconRenderer.material.color = TeleportIconColor;
+                    _intentText.text = "~";
+                    HideTimer();
+                    break;
+                case IntentType.Revive:
+                    _intentIconRenderer.material.color = ReviveIconColor;
+                    _intentText.text = "+";
                     HideTimer();
                     break;
             }
@@ -201,6 +219,45 @@ namespace Mergistry.Views.Combat
             var shader = Shader.Find("Mergistry/SH_ArmoredBeetle") ?? Shader.Find("Unlit/Color");
             var go     = MakeQuad("BeetleQuad", Vector3.zero, Vector3.one * 0.90f, _baseBodyColor, shader);
             _bodyRenderer = go.GetComponent<MeshRenderer>();
+        }
+
+        private void BuildMirrorSlime()
+        {
+            _baseBodyColor = MirrorSlimeColor;
+            // Metaball-style: two overlapping circles as placeholder
+            var shader = Shader.Find("Unlit/Color");
+            var go     = MakeQuad("SlimeBody", new Vector3(0f, 0.05f, 0f), new Vector3(0.85f, 0.75f, 1f),
+                                  _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            MakeQuad("SlimeBlob", new Vector3(0.20f, -0.15f, 0.01f), new Vector3(0.45f, 0.45f, 1f),
+                     new Color(MirrorSlimeColor.r * 0.85f, MirrorSlimeColor.g * 0.85f, MirrorSlimeColor.b, 1f),
+                     shader, transform);
+        }
+
+        private void BuildPhantom()
+        {
+            _baseBodyColor = PhantomColor;
+            var shader = Shader.Find("Unlit/Color");
+            // Ghost shape: upper body + wispy bottom
+            var go = MakeQuad("PhantomBody", new Vector3(0f, 0.10f, 0f), new Vector3(0.80f, 0.80f, 1f),
+                               _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            MakeQuad("PhantomTail", new Vector3(0f, -0.30f, 0.01f), new Vector3(0.55f, 0.30f, 1f),
+                     new Color(PhantomColor.r, PhantomColor.g, PhantomColor.b, 0.6f),
+                     Shader.Find("Sprites/Default") ?? shader, transform);
+        }
+
+        private void BuildNecromancer()
+        {
+            _baseBodyColor = NecromancerColor;
+            var shader = Shader.Find("Unlit/Color");
+            // Robed figure: tall narrow quad + hood top
+            var go = MakeQuad("NecroRobe", new Vector3(0f, -0.05f, 0f), new Vector3(0.60f, 0.90f, 1f),
+                               _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            MakeQuad("NecroHood", new Vector3(0f, 0.45f, 0.01f), new Vector3(0.70f, 0.35f, 1f),
+                     new Color(NecromancerColor.r * 1.4f, NecromancerColor.g * 1.4f, NecromancerColor.b * 1.4f, 1f),
+                     shader, transform);
         }
 
         private void BuildArmorIndicators(int maxArmor)

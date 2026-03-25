@@ -48,6 +48,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\_Project\Scripts\Data\Enums\PotionType.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\ZoneInstance.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\ZoneType.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\AIService\AIService.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\EnemyView.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\CellContentType.cs" />
@@ -81,12 +83,14 @@
     <Compile Include="Assets\_Project\Scripts\Views\Combat\GridView.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\ElementType.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\DamageService\DamageService.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\ZoneOverlayView.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\GameManager.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyIntent.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\FadeView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\GameStateMachine.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotClickHandler.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\EventBus\EventBus.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\StatusEffectType.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotReplacePopup.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardDragController.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\SkipTurnButtonView.cs" />
@@ -97,6 +101,7 @@
     <Compile Include="Assets\_Project\Scripts\GameStates\ResultState\ResultState.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\CombatInputController.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Combat\StatusEffect.cs" />
     <Compile Include="Assets\_Project\Scripts\Events\GameEvents.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\BackgroundView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\ServiceLocator\ServiceLocator.cs" />
