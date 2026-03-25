@@ -47,7 +47,10 @@ namespace Mergistry.Views.Combat
                 Destroy(cellGo.GetComponent<MeshCollider>());
 
                 var rend = cellGo.GetComponent<MeshRenderer>();
-                rend.material = new Material(Shader.Find("Unlit/Color")) { color = CellColor };
+                var floorShader = Shader.Find("Mergistry/SH_Floor");
+                rend.material = floorShader != null
+                    ? new Material(floorShader)
+                    : new Material(Shader.Find("Unlit/Color")) { color = CellColor };
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rend.receiveShadows    = false;
 

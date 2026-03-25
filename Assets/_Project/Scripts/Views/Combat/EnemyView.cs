@@ -6,19 +6,16 @@ using UnityEngine;
 namespace Mergistry.Views.Combat
 {
     /// <summary>
-    /// Placeholder visual for a combat enemy.
-    /// Skeleton: white rectangle with two dot-eyes.
-    /// Spider: gray circle.
+    /// Visual for a combat enemy using SDF shaders (SH_Skeleton / SH_Spider).
+    /// Each enemy type is drawn with a single SDF quad.
     /// Includes intent icon (colored quad + text) and hit/death animations.
     /// </summary>
     public class EnemyView : MonoBehaviour
     {
-        private static readonly Color SkeletonColor = new Color(0.90f, 0.90f, 0.90f);
-        private static readonly Color SpiderColor   = new Color(0.50f, 0.50f, 0.55f);
-        private static readonly Color EyeColor      = new Color(0.15f, 0.15f, 0.20f);
-        private static readonly Color FlashColor    = Color.white;
-        private static readonly Color MoveIconColor   = new Color(0.95f, 0.85f, 0.20f);
-        private static readonly Color AttackIconColor = new Color(0.90f, 0.20f, 0.15f);
+        private static readonly Color SkeletonColor    = new Color(0.90f, 0.90f, 0.90f, 1.00f);
+        private static readonly Color SpiderColor      = new Color(0.50f, 0.50f, 0.55f, 1.00f);
+        private static readonly Color MoveIconColor    = new Color(0.95f, 0.85f, 0.20f);
+        private static readonly Color AttackIconColor  = new Color(0.90f, 0.20f, 0.15f);
 
         public int EntityId { get; private set; }
 
@@ -50,20 +47,17 @@ namespace Mergistry.Views.Combat
             transform.position = new Vector3(worldPos.x, worldPos.y, transform.position.z);
         }
 
-        /// <summary>Brief white flash to indicate a hit (0.1 s).</summary>
         public void PlayHitFlash()
         {
             StopCoroutine("HitFlashRoutine");
             StartCoroutine(HitFlashRoutine());
         }
 
-        /// <summary>Fades out over 0.3 s, then calls onComplete.</summary>
         public void PlayDeathFade(Action onComplete)
         {
             StartCoroutine(DeathFadeRoutine(onComplete));
         }
 
-        /// <summary>Updates the intent icon based on the enemy's current intent.</summary>
         public void SetIntent(EnemyIntent intent)
         {
             if (intent == null)
@@ -82,33 +76,42 @@ namespace Mergistry.Views.Combat
 
         private void BuildSkeleton()
         {
-            // Body: white rectangle (0.55 w × 0.65 h)
-            var body = CreateQuad("Body", Vector3.zero, new Vector3(0.55f, 0.65f, 1f), SkeletonColor);
-            _bodyRenderer  = body.GetComponent<MeshRenderer>();
             _baseBodyColor = SkeletonColor;
 
-            // Eyes: two small dark dots
-            CreateQuad("EyeL", new Vector3(-0.12f,  0.10f, -0.01f), Vector3.one * 0.10f, EyeColor);
-            CreateQuad("EyeR", new Vector3( 0.12f,  0.10f, -0.01f), Vector3.one * 0.10f, EyeColor);
+            var shader = Shader.Find("Mergistry/SH_Skeleton");
+            if (shader == null) shader = Shader.Find("Unlit/Color");
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "SkeletonQuad";
+            go.transform.SetParent(transform);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale    = Vector3.one * 0.90f;
+            Destroy(go.GetComponent<MeshCollider>());
+
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            _bodyRenderer.material = new Material(shader) { color = _baseBodyColor };
+            _bodyRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _bodyRenderer.receiveShadows    = false;
         }
 
         private void BuildSpider()
         {
-            // Body: gray circle-ish oval (wider than tall)
-            var body = CreateQuad("Body", Vector3.zero, new Vector3(0.60f, 0.40f, 1f), SpiderColor);
-            _bodyRenderer  = body.GetComponent<MeshRenderer>();
             _baseBodyColor = SpiderColor;
 
-            // Eight small leg stubs
-            float[,] legs = {
-                {-0.38f,  0.10f}, { 0.38f,  0.10f},
-                {-0.38f,  0.00f}, { 0.38f,  0.00f},
-                {-0.38f, -0.10f}, { 0.38f, -0.10f},
-                {-0.30f, -0.20f}, { 0.30f, -0.20f}
-            };
-            for (int i = 0; i < legs.GetLength(0); i++)
-                CreateQuad($"Leg{i}", new Vector3(legs[i, 0], legs[i, 1], -0.01f),
-                            new Vector3(0.14f, 0.06f, 1f), SpiderColor * 0.8f);
+            var shader = Shader.Find("Mergistry/SH_Spider");
+            if (shader == null) shader = Shader.Find("Unlit/Color");
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "SpiderQuad";
+            go.transform.SetParent(transform);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale    = Vector3.one * 1.00f;
+            Destroy(go.GetComponent<MeshCollider>());
+
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            _bodyRenderer.material = new Material(shader) { color = _baseBodyColor };
+            _bodyRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _bodyRenderer.receiveShadows    = false;
         }
 
         private void BuildIntentIcon()
@@ -117,11 +120,10 @@ namespace Mergistry.Views.Combat
             _intentIcon.transform.SetParent(transform);
             _intentIcon.transform.localPosition = new Vector3(0f, 0.55f, -0.03f);
 
-            // Colored background quad
-            var bg = CreateQuad("IntentBg", Vector3.zero, Vector3.one * 0.28f, AttackIconColor, _intentIcon.transform);
+            var bg = CreateQuad("IntentBg", Vector3.zero, Vector3.one * 0.28f,
+                                AttackIconColor, _intentIcon.transform);
             _intentIconRenderer = bg.GetComponent<MeshRenderer>();
 
-            // Text label
             var textGo = new GameObject("IntentLabel");
             textGo.transform.SetParent(_intentIcon.transform);
             textGo.transform.localPosition = new Vector3(0f, 0f, -0.01f);
@@ -141,25 +143,26 @@ namespace Mergistry.Views.Combat
 
         private IEnumerator HitFlashRoutine()
         {
-            _bodyRenderer.material.color = FlashColor;
+            _bodyRenderer.material.color = Color.white;
             yield return new WaitForSeconds(0.1f);
             _bodyRenderer.material.color = _baseBodyColor;
         }
 
         private IEnumerator DeathFadeRoutine(Action onComplete)
         {
-            var   mat     = _bodyRenderer.material;
-            float elapsed = 0f;
+            var   mat      = _bodyRenderer.material;
+            float elapsed  = 0f;
             const float duration = 0.3f;
+            var   c        = _baseBodyColor;
 
-            // Use Sprites/Default for alpha fade
-            mat.shader = Shader.Find("Sprites/Default");
-            var c = _baseBodyColor;
+            // Switch to a transparent-capable shader for the fade
+            var fadeShader = Shader.Find("Sprites/Default");
+            if (fadeShader != null) mat.shader = fadeShader;
 
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                c.a = 1f - elapsed / duration;
+                c.a      = 1f - elapsed / duration;
                 mat.color = c;
                 yield return null;
             }
@@ -169,22 +172,20 @@ namespace Mergistry.Views.Combat
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private GameObject CreateQuad(string goName, Vector3 localPos, Vector3 localScale,
-                                       Color color, Transform parent = null)
+        private static GameObject CreateQuad(string goName, Vector3 localPos, Vector3 localScale,
+                                             Color color, Transform parent)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
             go.name = goName;
-            go.transform.SetParent(parent != null ? parent : transform);
+            go.transform.SetParent(parent);
             go.transform.localPosition = localPos;
             go.transform.localScale    = localScale;
-
             Destroy(go.GetComponent<MeshCollider>());
 
             var rend = go.GetComponent<MeshRenderer>();
             rend.material = new Material(Shader.Find("Unlit/Color")) { color = color };
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rend.receiveShadows    = false;
-
             return go;
         }
     }

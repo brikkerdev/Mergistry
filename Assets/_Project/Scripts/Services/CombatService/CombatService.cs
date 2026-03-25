@@ -21,13 +21,31 @@ namespace Mergistry.Services
             return model;
         }
 
-        /// <summary>Spawns M5 enemies into the model: Skeleton at (3,3) and Spider at (4,1).</summary>
-        public void SpawnEnemies(CombatModel model)
+        /// <summary>
+        /// Spawns enemies for the given fight index:
+        /// 0 → 1 Skeleton;  1 → 2 Skeletons;  2 → 1 Skeleton + 1 Spider.
+        /// </summary>
+        public void SpawnEnemies(CombatModel model, int fightIndex)
         {
-            model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                   new Vector2Int(3, 3), hp: 3));
-            model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Spider,
-                                                   new Vector2Int(4, 1), hp: 2));
+            switch (fightIndex)
+            {
+                case 0:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 3), hp: 3));
+                    break;
+                case 1:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 3), hp: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(1, 3), hp: 3));
+                    break;
+                default:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 3), hp: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Spider,
+                                                           new Vector2Int(4, 1), hp: 2));
+                    break;
+            }
         }
 
         // ── Movement ────────────────────────────────────────────────────────────

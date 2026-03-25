@@ -73,6 +73,8 @@ namespace Mergistry.GameStates
             _inventoryView.Refresh(_inventory);
             _inventoryView.OnGoBattleClicked -= OnGoBattleClicked;
             _inventoryView.OnGoBattleClicked += OnGoBattleClicked;
+
+            _fadeView.FadeIn(0.2f, null);
         }
 
         public void Exit()

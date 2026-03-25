@@ -41,5 +41,12 @@ namespace Mergistry.Models
             _slots[slotIndex].Level             = level;
             _slots[slotIndex].CooldownRemaining = 0;
         }
+
+        /// <summary>Resets all slots to empty (used when starting a new run).</summary>
+        public void Clear()
+        {
+            for (int i = 0; i < SlotCount; i++)
+                _slots[i] = PotionSlot.Empty();
+        }
     }
 }

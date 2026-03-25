@@ -48,10 +48,15 @@ namespace Mergistry.Boot
             var effectView  = FindFirstObjectByType<EffectView>(FindObjectsInactive.Include);
             var skipButton  = FindFirstObjectByType<SkipTurnButtonView>(FindObjectsInactive.Include);
 
+            // ── M6 dependencies ───────────────────────────────────────────────
+            var healthBarView    = FindFirstObjectByType<HealthBarView>(FindObjectsInactive.Include);
+            var resultScreenView = FindFirstObjectByType<ResultScreenView>(FindObjectsInactive.Include);
+
             Debug.Log($"[GameManager] board={boardView}, drag={dragController}, menu={menuScreenView}, " +
                       $"counter={actionCounter}, inventory={inventoryView}, popup={replacePopup}");
             Debug.Log($"[GameManager] grid={gridView}, player={playerView}, combatInput={combatInput}, " +
                       $"fade={fadeView}, effect={effectView}, skip={skipButton}");
+            Debug.Log($"[GameManager] healthBar={healthBarView}, resultScreen={resultScreenView}");
 
             if (boardView == null || dragController == null || menuScreenView == null ||
                 actionCounter == null || inventoryView == null || replacePopup == null ||
@@ -62,6 +67,11 @@ namespace Mergistry.Boot
                 return;
             }
 
+            if (healthBarView == null)
+                Debug.LogWarning("[GameManager] HealthBarView not found — HP display will be absent.");
+            if (resultScreenView == null)
+                Debug.LogWarning("[GameManager] ResultScreenView not found — result screen will be absent.");
+
             _fsm = new GameStateMachine();
 
             // Hide everything initially
@@ -71,6 +81,8 @@ namespace Mergistry.Boot
             gridView.gameObject.SetActive(false);
             playerView.gameObject.SetActive(false);
             skipButton.gameObject.SetActive(false);
+            if (healthBarView != null)
+                healthBarView.gameObject.SetActive(false);
 
             // ── Services ──────────────────────────────────────────────────────
             if (!ServiceLocator.TryGet<DistillationService>(out var distillationService))
@@ -99,6 +111,7 @@ namespace Mergistry.Boot
 
             // ── Models ────────────────────────────────────────────────────────
             var inventory = new InventoryModel();
+            var runModel  = new RunModel();
             inventoryView.Refresh(inventory);
 
             // ── States ────────────────────────────────────────────────────────
@@ -114,7 +127,17 @@ namespace Mergistry.Boot
                 actionCounter, inventoryView, replacePopup, inventory,
                 _fsm, combatState, fadeView);
 
-            var menuState = new MenuState(menuScreenView, _fsm, distillationState);
+            var menuState = new MenuState(menuScreenView, _fsm, distillationState, fadeView);
+
+            ResultState resultState = null;
+            if (resultScreenView != null)
+            {
+                resultState = new ResultState(resultScreenView, fadeView, _fsm, runModel, inventory);
+                resultState.SetNavigationTargets(menuState, distillationState);
+            }
+
+            // Wire M6 flow dependencies into CombatState
+            combatState.SetFlowDependencies(_fsm, runModel, healthBarView, distillationState, resultState);
 
             _fsm.ChangeState(menuState);
             Debug.Log("[GameManager] FSM started → MenuState");

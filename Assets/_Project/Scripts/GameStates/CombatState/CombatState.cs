@@ -29,6 +29,13 @@ namespace Mergistry.GameStates
         private readonly SkipTurnButtonView    _skipButton;
         private readonly InventoryModel        _inventory;
 
+        // ── Flow dependencies (set via SetFlowDependencies after construction) ─
+        private RunModel          _runModel;
+        private HealthBarView     _healthBarView;
+        private DistillationState _distillationState;
+        private ResultState       _resultState;
+        private GameStateMachine  _fsm;
+
         // ── State ──────────────────────────────────────────────────────────────
         private CombatModel               _model;
         private int                       _selectedSlot = -1;
@@ -63,12 +70,32 @@ namespace Mergistry.GameStates
             _inventory       = inventory;
         }
 
+        /// <summary>Call from GameManager after all states are created.</summary>
+        public void SetFlowDependencies(
+            GameStateMachine  fsm,
+            RunModel          runModel,
+            HealthBarView     healthBarView,
+            DistillationState distillationState,
+            ResultState       resultState)
+        {
+            _fsm               = fsm;
+            _runModel          = runModel;
+            _healthBarView     = healthBarView;
+            _distillationState = distillationState;
+            _resultState       = resultState;
+        }
+
         // ── IGameState ─────────────────────────────────────────────────────────
 
         public void Enter()
         {
             _model = _combatService.InitCombat();
-            _combatService.SpawnEnemies(_model);
+
+            // Restore persistent HP from the run
+            if (_runModel != null)
+                _model.Player.HP = _runModel.PersistentHP;
+
+            _combatService.SpawnEnemies(_model, _runModel?.CurrentFight ?? 0);
             _selectedSlot = -1;
             _phase        = TurnPhase.PlayerTurn;
 
@@ -90,6 +117,15 @@ namespace Mergistry.GameStates
             _inventoryView.OnSlotClicked += OnSlotClicked;
             _skipButton.OnClicked        += OnSkipTurn;
 
+            // Health bar
+            if (_healthBarView != null)
+            {
+                _healthBarView.gameObject.SetActive(true);
+                _healthBarView.Refresh(_model.Player.HP, _model.Player.MaxHP);
+            }
+
+            EventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
+
             SpawnEnemyViews();
 
             _aiService.DetermineIntents(_model);
@@ -97,11 +133,14 @@ namespace Mergistry.GameStates
 
             _fadeView.FadeIn(0.2f, null);
 
-            Debug.Log("[CombatState] Entered — player at (1,1), enemies spawned");
+            Debug.Log($"[CombatState] Entered — fight {_runModel?.CurrentFight}, " +
+                      $"player HP={_model.Player.HP}, enemies={_model.Enemies.Count}");
         }
 
         public void Exit()
         {
+            EventBus.Unsubscribe<PlayerDamagedEvent>(OnPlayerDamaged);
+
             _inputController.SetActive(false);
             _inputController.OnMoveRequested = null;
             _inputController.OnGridTapped    = null;
@@ -110,6 +149,7 @@ namespace Mergistry.GameStates
             _skipButton.OnClicked        -= OnSkipTurn;
 
             _inventoryView.SetCombatMode(false);
+            _inventoryView.gameObject.SetActive(false);
 
             _gridView.ClearHighlights();
             _gridView.ClearAoeHighlights();
@@ -120,6 +160,9 @@ namespace Mergistry.GameStates
             _gridView.gameObject.SetActive(false);
             _playerView.gameObject.SetActive(false);
             _skipButton.gameObject.SetActive(false);
+
+            if (_healthBarView != null)
+                _healthBarView.gameObject.SetActive(false);
         }
 
         public void Tick() { }
@@ -183,7 +226,6 @@ namespace Mergistry.GameStates
             var validCells = _damageService.GetValidThrowRange(_model.Grid, _model.Player.Position);
             if (!validCells.Contains(cell)) return;
 
-            // AoE cells and visual effects
             var aoeCells    = _damageService.GetAffectedCells(slot.Type, cell, _model.Grid);
             var potionColor = BrewView.GetBrewColor(slot.Type);
 
@@ -191,7 +233,6 @@ namespace Mergistry.GameStates
             foreach (var aoeCell in aoeCells)
                 _effectView.PlayEffect(_gridView.GridToWorld(aoeCell), potionColor);
 
-            // Apply damage to enemies in AoE
             int damage = _damageService.GetDamage(slot.Type, slot.Level);
             foreach (var enemy in _model.Enemies.ToList())
             {
@@ -203,7 +244,6 @@ namespace Mergistry.GameStates
                 }
             }
 
-            // Execute throw (sets cooldown + HasActed)
             _combatService.ThrowPotion(_model, _inventory, _selectedSlot, cell);
 
             _selectedSlot = -1;
@@ -212,7 +252,6 @@ namespace Mergistry.GameStates
 
             Debug.Log($"[CombatState] Threw {slot.Type} lv{slot.Level} at {cell}");
 
-            // End player turn after acting
             _gridView.Run(EnemyTurnRoutine());
         }
 
@@ -224,12 +263,26 @@ namespace Mergistry.GameStates
 
             _combatService.HealOnSkip(_model);
 
+            if (_healthBarView != null)
+                _healthBarView.Refresh(_model.Player.HP, _model.Player.MaxHP);
+
             _selectedSlot = -1;
             _gridView.ClearHighlights();
             _gridView.ClearAoeHighlights();
             _inventoryView.RefreshCombat(_inventory, -1);
 
             _gridView.Run(EnemyTurnRoutine());
+        }
+
+        // ── Player damaged event ──────────────────────────────────────────────
+
+        private void OnPlayerDamaged(PlayerDamagedEvent e)
+        {
+            if (_healthBarView != null)
+            {
+                _healthBarView.Refresh(e.HPRemaining, _model.Player.MaxHP);
+                _healthBarView.PlayDamageFlash();
+            }
         }
 
         // ── Enemy turn coroutine ───────────────────────────────────────────────
@@ -240,10 +293,8 @@ namespace Mergistry.GameStates
             _inputController.SetActive(false);
             _gridView.ClearIntentHighlights();
 
-            // Remove enemies that died from potion throws before enemy turn
             RemoveDeadEnemies();
 
-            // Check victory before enemies act
             if (_model.Enemies.Count == 0)
             {
                 OnCombatVictory();
@@ -252,10 +303,8 @@ namespace Mergistry.GameStates
 
             yield return new WaitForSeconds(0.25f);
 
-            // Execute enemy intents
             _aiService.ExecuteIntents(_model);
 
-            // Update enemy view positions
             foreach (var enemy in _model.Enemies)
             {
                 if (_enemyViews.TryGetValue(enemy.EntityId, out var view))
@@ -264,17 +313,14 @@ namespace Mergistry.GameStates
 
             yield return new WaitForSeconds(0.15f);
 
-            // Tick cooldowns and reset player flags
             _combatService.StartNextPlayerTurn(_model, _inventory);
 
-            // Check player death
             if (_model.Player.HP <= 0)
             {
                 OnCombatDefeat();
                 yield break;
             }
 
-            // Determine intents for next turn
             _aiService.DetermineIntents(_model);
             RefreshEnemyIntentHighlights();
 
@@ -292,12 +338,38 @@ namespace Mergistry.GameStates
         {
             Debug.Log("[CombatState] Victory! All enemies defeated.");
             EventBus.Publish(new CombatEndedEvent { Victory = true });
+
+            if (_runModel == null || _fsm == null) return;
+
+            // Save HP before leaving
+            _runModel.PersistentHP = _model.Player.HP;
+            _runModel.CurrentFight++;
+
+            if (_runModel.CurrentFight >= 3)
+            {
+                // All fights done — show victory result
+                _runModel.LastVictory = true;
+                _fadeView.FadeOut(0.3f, () => _fsm.ChangeState(_resultState));
+            }
+            else
+            {
+                // Next fight — go to distillation
+                _runModel.LastVictory = false;
+                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_distillationState));
+            }
         }
 
         private void OnCombatDefeat()
         {
             Debug.Log("[CombatState] Defeat! Player HP reached 0.");
             EventBus.Publish(new CombatEndedEvent { Victory = false });
+
+            if (_runModel == null || _fsm == null) return;
+
+            _runModel.LastVictory  = false;
+            _runModel.PersistentHP = 0;
+
+            _fadeView.FadeOut(0.3f, () => _fsm.ChangeState(_resultState));
         }
 
         // ── Enemy view management ─────────────────────────────────────────────
@@ -327,7 +399,7 @@ namespace Mergistry.GameStates
                     view.PlayDeathFade(() => Object.Destroy(view.gameObject));
                     _enemyViews.Remove(d.EntityId);
                 }
-                Debug.Log($"[CombatState] Enemy {d.EntityId} ({d.Type}) removed from battlefield");
+                Debug.Log($"[CombatState] Enemy {d.EntityId} ({d.Type}) removed");
             }
         }
 
@@ -347,11 +419,9 @@ namespace Mergistry.GameStates
             {
                 if (enemy.IsDead || enemy.Intent == null) continue;
 
-                // Update intent icon on view
                 if (_enemyViews.TryGetValue(enemy.EntityId, out var view))
                     view.SetIntent(enemy.Intent);
 
-                // Collect attack cells for orange grid highlight
                 if (enemy.Intent.Type == IntentType.Attack)
                     attackCells.AddRange(enemy.Intent.AttackCells);
             }

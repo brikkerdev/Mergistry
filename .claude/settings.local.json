@@ -18,7 +18,9 @@
       "Bash(find '/c/Unity Games/Mergistry/Assets' -type f \\\\\\(-name *.cs -o -name *.unity \\\\\\))",
       "mcp__UnityMCP__batch_execute",
       "Bash(find '/c/Unity Games/Mergistry/Assets/Scripts' -name *.cs -type f)",
-      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project' -name *.cs -type f)"
+      "Bash(find '/c/Unity Games/Mergistry/Assets/_Project' -name *.cs -type f)",
+      "mcp__UnityMCP__manage_material",
+      "mcp__UnityMCP__manage_script"
     ]
   }
 }

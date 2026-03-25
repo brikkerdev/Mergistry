@@ -58,6 +58,7 @@
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\BoardModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\DistillationService\DistillationService.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\DistillationState\DistillationState.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\Screens\ResultScreenView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\InventoryModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\EffectView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\IngredientView.cs" />
@@ -70,6 +71,7 @@
     <Compile Include="Assets\_Project\Scripts\Models\Combat\IntentType.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\CellContent.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\RunModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Input\InputService.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\GridModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\PlayerCombatModel.cs" />
@@ -87,11 +89,22 @@
     <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyType.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\SkipTurnButtonView.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\Bootstrapper.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\HUD\HealthBarView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\PlayerView.cs" />
+    <Compile Include="Assets\_Project\Scripts\GameStates\ResultState\ResultState.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\CombatInputController.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardView.cs" />
     <Compile Include="Assets\_Project\Scripts\Events\GameEvents.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\BackgroundView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\ServiceLocator\ServiceLocator.cs" />
+    <None Include="Assets\_Project\Shaders\SH_Skeleton.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Player.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Floor.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Background.shader" />
+    <None Include="Assets\_Project\Shaders\AlchemistSDF.cginc" />
+    <None Include="Assets\_Project\Shaders\SH_Brew.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Spider.shader" />
+    <None Include="Assets\_Project\Shaders\SH_Ingredient.shader" />
     <Reference Include="UnityEngine">
       <HintPath>C:\Program Files\Unity\Hub\Editor\6000.3.10f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
     </Reference>
