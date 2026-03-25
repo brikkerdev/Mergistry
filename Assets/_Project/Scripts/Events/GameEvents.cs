@@ -12,12 +12,38 @@ namespace Mergistry.Events
     public struct MergePerformedEvent  { }
     public struct InfusePerformedEvent { }
 
-    // --- Combat ---
+    // --- Combat: player actions ---
     public struct PotionThrownEvent
     {
         public PotionType Type;
         public int        Level;
         public Vector2Int TargetCell;
+    }
+
+    // --- Combat: enemy ---
+    public struct EnemyDamagedEvent
+    {
+        public int EntityId;
+        public int Damage;
+        public int HPRemaining;
+    }
+
+    public struct EnemyDiedEvent
+    {
+        public int EntityId;
+    }
+
+    // --- Combat: player damage ---
+    public struct PlayerDamagedEvent
+    {
+        public int Damage;
+        public int HPRemaining;
+    }
+
+    // --- Combat: outcome ---
+    public struct CombatEndedEvent
+    {
+        public bool Victory;
     }
 
     // --- Game Flow ---

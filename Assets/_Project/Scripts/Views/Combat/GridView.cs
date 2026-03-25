@@ -6,9 +6,10 @@ using UnityEngine;
 namespace Mergistry.Views.Combat
 {
     /// <summary>
-    /// Renders the 5×5 combat grid. Cells are dark quads with thin separator gaps.
-    /// Exposes highlight helpers (blue = valid targets, red = AoE) and
-    /// world↔grid coordinate conversion.
+    /// Renders the 5×5 combat grid with three overlay layers:
+    /// blue = valid move/throw targets,
+    /// red  = potion AoE,
+    /// orange = enemy intent attack highlights.
     /// </summary>
     public class GridView : MonoBehaviour
     {
@@ -16,14 +17,14 @@ namespace Mergistry.Views.Combat
         private const float CellGap  = 0.06f;
         private const float CellStep = CellSize + CellGap;
 
-        private static readonly Color CellColor      = new Color(0.13f, 0.15f, 0.20f);
-        private static readonly Color HighlightBlue  = new Color(0.20f, 0.50f, 0.80f);
-        private static readonly Color HighlightRed   = new Color(0.85f, 0.20f, 0.15f);
+        private static readonly Color CellColor       = new Color(0.13f, 0.15f, 0.20f);
+        private static readonly Color HighlightBlue   = new Color(0.20f, 0.50f, 0.80f);
+        private static readonly Color HighlightRed    = new Color(0.85f, 0.20f, 0.15f);
+        private static readonly Color HighlightOrange = new Color(0.90f, 0.50f, 0.10f);
 
-        // Blue overlays — valid movement/throw targets
-        private MeshRenderer[,] _highlightRenderers;
-        // Red overlays — AoE preview
-        private MeshRenderer[,] _aoeRenderers;
+        private MeshRenderer[,] _highlightRenderers; // blue
+        private MeshRenderer[,] _aoeRenderers;       // red
+        private MeshRenderer[,] _intentRenderers;    // orange
 
         private void Awake() => Build();
 
@@ -33,29 +34,26 @@ namespace Mergistry.Views.Combat
         {
             _highlightRenderers = new MeshRenderer[GridModel.Width, GridModel.Height];
             _aoeRenderers       = new MeshRenderer[GridModel.Width, GridModel.Height];
+            _intentRenderers    = new MeshRenderer[GridModel.Width, GridModel.Height];
 
             for (int x = 0; x < GridModel.Width; x++)
+            for (int y = 0; y < GridModel.Height; y++)
             {
-                for (int y = 0; y < GridModel.Height; y++)
-                {
-                    var cellGo = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                    cellGo.name = $"Cell_{x}_{y}";
-                    cellGo.transform.SetParent(transform);
-                    cellGo.transform.localPosition = LocalPos(x, y);
-                    cellGo.transform.localScale    = Vector3.one * CellSize;
-                    Destroy(cellGo.GetComponent<MeshCollider>());
+                var cellGo = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                cellGo.name = $"Cell_{x}_{y}";
+                cellGo.transform.SetParent(transform);
+                cellGo.transform.localPosition = LocalPos(x, y);
+                cellGo.transform.localScale    = Vector3.one * CellSize;
+                Destroy(cellGo.GetComponent<MeshCollider>());
 
-                    var rend = cellGo.GetComponent<MeshRenderer>();
-                    rend.material = new Material(Shader.Find("Unlit/Color")) { color = CellColor };
-                    rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                    rend.receiveShadows    = false;
+                var rend = cellGo.GetComponent<MeshRenderer>();
+                rend.material = new Material(Shader.Find("Unlit/Color")) { color = CellColor };
+                rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rend.receiveShadows    = false;
 
-                    // Blue highlight overlay (valid targets)
-                    _highlightRenderers[x, y] = MakeOverlay(cellGo.transform, "Hl", -0.01f, HighlightBlue);
-
-                    // Red AoE overlay (slightly closer than blue)
-                    _aoeRenderers[x, y] = MakeOverlay(cellGo.transform, "Aoe", -0.02f, HighlightRed);
-                }
+                _highlightRenderers[x, y] = MakeOverlay(cellGo.transform, "Hl",     -0.01f, HighlightBlue);
+                _aoeRenderers      [x, y] = MakeOverlay(cellGo.transform, "Aoe",    -0.02f, HighlightRed);
+                _intentRenderers   [x, y] = MakeOverlay(cellGo.transform, "Intent", -0.015f, HighlightOrange);
             }
         }
 
@@ -125,7 +123,6 @@ namespace Mergistry.Views.Combat
                 _aoeRenderers[x, y].gameObject.SetActive(false);
         }
 
-        /// <summary>Shows red AoE highlights and auto-clears them after <paramref name="duration"/> seconds.</summary>
         public void SetAoeHighlightsTemporary(List<Vector2Int> cells, float duration = 0.4f)
         {
             SetAoeHighlights(cells);
@@ -137,6 +134,27 @@ namespace Mergistry.Views.Combat
             yield return new WaitForSeconds(delay);
             ClearAoeHighlights();
         }
+
+        // ── Orange intent highlights (enemy attack previews) ──────────────────
+
+        public void SetIntentHighlights(List<Vector2Int> cells)
+        {
+            ClearIntentHighlights();
+            foreach (var c in cells)
+                _intentRenderers[c.x, c.y].gameObject.SetActive(true);
+        }
+
+        public void ClearIntentHighlights()
+        {
+            for (int x = 0; x < GridModel.Width;  x++)
+            for (int y = 0; y < GridModel.Height; y++)
+                _intentRenderers[x, y].gameObject.SetActive(false);
+        }
+
+        // ── Coroutine runner ──────────────────────────────────────────────────
+
+        /// <summary>Allows non-MonoBehaviour callers to run coroutines via GridView.</summary>
+        public Coroutine Run(IEnumerator routine) => StartCoroutine(routine);
 
         // ── Helpers ───────────────────────────────────────────────────────────
 

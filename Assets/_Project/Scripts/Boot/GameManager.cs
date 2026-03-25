@@ -91,6 +91,12 @@ namespace Mergistry.Boot
                 ServiceLocator.Register(damageService);
             }
 
+            if (!ServiceLocator.TryGet<AIService>(out var aiService))
+            {
+                aiService = new AIService(damageService);
+                ServiceLocator.Register(aiService);
+            }
+
             // ── Models ────────────────────────────────────────────────────────
             var inventory = new InventoryModel();
             inventoryView.Refresh(inventory);
@@ -98,7 +104,7 @@ namespace Mergistry.Boot
             // ── States ────────────────────────────────────────────────────────
             var combatState = new CombatState(
                 gridView, playerView, combatInput,
-                combatService, damageService,
+                combatService, damageService, aiService,
                 inventoryView, fadeView,
                 effectView, skipButton,
                 inventory);

@@ -1,22 +1,20 @@
 using System.Collections.Generic;
+using Mergistry.Core;
 using Mergistry.Data;
+using Mergistry.Events;
 using Mergistry.Models.Combat;
 using UnityEngine;
 
 namespace Mergistry.Services
 {
     /// <summary>
-    /// Pure logic service: AoE patterns and valid throw range calculations.
-    /// No MonoBehaviour dependency — safe to call from any context.
+    /// Pure logic service: AoE patterns, throw range, and damage application.
     /// </summary>
     public class DamageService
     {
-        // ── Public API ──────────────────────────────────────────────────────────
+        // ── Throw range ─────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// All grid cells within Manhattan distance ≤ <paramref name="range"/> of the player
-        /// (excluding the player's own cell).
-        /// </summary>
+        /// <summary>All grid cells within Manhattan distance ≤ range of the player (excluding player's cell).</summary>
         public List<Vector2Int> GetValidThrowRange(GridModel grid, Vector2Int playerPos, int range = 3)
         {
             var result = new List<Vector2Int>();
@@ -30,25 +28,24 @@ namespace Mergistry.Services
             return result;
         }
 
-        /// <summary>
-        /// Returns the set of grid cells hit by the AoE of the given potion type when
-        /// thrown at <paramref name="target"/>.
-        /// </summary>
+        // ── AoE patterns ────────────────────────────────────────────────────────
+
+        /// <summary>Returns grid cells hit by the AoE of the given potion type at target.</summary>
         public List<Vector2Int> GetAffectedCells(PotionType type, Vector2Int target, GridModel grid)
         {
             return type switch
             {
-                PotionType.Flame  => Cross(target, 1, grid),        // 5-cell cross
-                PotionType.Stream => Row(target.y, grid),            // full row
-                PotionType.Poison => Block2x2(target, grid),         // 2×2 block
-                PotionType.Steam  => Cross(target, 2, grid),         // larger cross (Aqua+Ignis)
-                PotionType.Napalm => Box3x3(target, grid),           // 3×3 explosion (Ignis+Toxin)
-                PotionType.Acid   => Column(target.x, grid),         // full column (Aqua+Toxin)
+                PotionType.Flame  => Cross(target, 1, grid),
+                PotionType.Stream => Row(target.y, grid),
+                PotionType.Poison => Block2x2(target, grid),
+                PotionType.Steam  => Cross(target, 2, grid),
+                PotionType.Napalm => Box3x3(target, grid),
+                PotionType.Acid   => Column(target.x, grid),
                 _                 => new List<Vector2Int> { target }
             };
         }
 
-        /// <summary>Base damage dealt by a potion (before enemy resistance, future use).</summary>
+        /// <summary>Base damage dealt by a potion.</summary>
         public int GetDamage(PotionType type, int level) =>
             type switch
             {
@@ -60,6 +57,42 @@ namespace Mergistry.Services
                 PotionType.Acid   => 2 * level,
                 _                 => level
             };
+
+        // ── Damage application ──────────────────────────────────────────────────
+
+        /// <summary>Applies damage to an enemy, publishing damage/death events.</summary>
+        public void ApplyDamage(EnemyCombatModel enemy, int damage)
+        {
+            enemy.HP -= damage;
+            if (enemy.HP < 0) enemy.HP = 0;
+
+            EventBus.Publish(new EnemyDamagedEvent
+            {
+                EntityId    = enemy.EntityId,
+                Damage      = damage,
+                HPRemaining = enemy.HP
+            });
+
+            if (enemy.HP <= 0)
+                EventBus.Publish(new EnemyDiedEvent { EntityId = enemy.EntityId });
+
+            Debug.Log($"[DamageService] Enemy {enemy.EntityId} ({enemy.Type}) took {damage} dmg → HP={enemy.HP}/{enemy.MaxHP}");
+        }
+
+        /// <summary>Applies damage to the player, publishing damage event.</summary>
+        public void ApplyDamageToPlayer(PlayerCombatModel player, int damage)
+        {
+            player.HP -= damage;
+            if (player.HP < 0) player.HP = 0;
+
+            EventBus.Publish(new PlayerDamagedEvent
+            {
+                Damage      = damage,
+                HPRemaining = player.HP
+            });
+
+            Debug.Log($"[DamageService] Player took {damage} dmg → HP={player.HP}/{player.MaxHP}");
+        }
 
         // ── AoE helpers ─────────────────────────────────────────────────────────
 
