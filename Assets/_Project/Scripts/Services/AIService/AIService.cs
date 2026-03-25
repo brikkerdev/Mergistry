@@ -2,15 +2,16 @@ using System.Collections.Generic;
 using Mergistry.Core;
 using Mergistry.Events;
 using Mergistry.Models.Combat;
+using Mergistry.Services.Bosses;
 using UnityEngine;
 
 namespace Mergistry.Services
 {
     /// <summary>
     /// Determines and executes enemy intents for each combat turn.
-    /// A2: MushroomBomb (countdown/explode), MagnetGolem (pull), ArmoredBeetle (armored skeleton).
-    /// A3: MirrorSlime (copy last potion), Phantom (teleport + attack), Necromancer (revive + flee).
-    /// Uses the Strategy pattern: each enemy type has a dedicated IEnemyBehavior class.
+    /// A2: MushroomBomb, MagnetGolem, ArmoredBeetle.
+    /// A3: MirrorSlime, Phantom, Necromancer.
+    /// A6: SpiderQueen, IronGolem, RenegadeAlchemist (boss behaviors). SummonMinions execution.
     /// </summary>
     public class AIService : IAIService
     {
@@ -23,14 +24,18 @@ namespace Mergistry.Services
 
             _behaviors = new Dictionary<EnemyType, IEnemyBehavior>
             {
-                { EnemyType.Skeleton,      new SkeletonBehavior() },
-                { EnemyType.Spider,        new SpiderBehavior() },
-                { EnemyType.MushroomBomb,  new MushroomBombBehavior() },
-                { EnemyType.MagnetGolem,   new MagnetGolemBehavior() },
-                { EnemyType.ArmoredBeetle, new ArmoredBeetleBehavior() },
-                { EnemyType.MirrorSlime,   new MirrorSlimeBehavior(_damageService) },
-                { EnemyType.Phantom,       new PhantomBehavior() },
-                { EnemyType.Necromancer,   new NecromancerBehavior() },
+                { EnemyType.Skeleton,           new SkeletonBehavior() },
+                { EnemyType.Spider,             new SpiderBehavior() },
+                { EnemyType.MushroomBomb,       new MushroomBombBehavior() },
+                { EnemyType.MagnetGolem,        new MagnetGolemBehavior() },
+                { EnemyType.ArmoredBeetle,      new ArmoredBeetleBehavior() },
+                { EnemyType.MirrorSlime,        new MirrorSlimeBehavior(_damageService) },
+                { EnemyType.Phantom,            new PhantomBehavior() },
+                { EnemyType.Necromancer,        new NecromancerBehavior() },
+                // A6: bosses
+                { EnemyType.SpiderQueen,        new SpiderQueenBehavior() },
+                { EnemyType.IronGolem,          new IronGolemBehavior() },
+                { EnemyType.RenegadeAlchemist,  new RenegadeAlchemistBehavior() },
             };
         }
 
@@ -166,6 +171,33 @@ namespace Mergistry.Services
                         _damageService.ApplyDamageToPlayer(model.Player, intent.Damage);
 
                     Debug.Log($"[AIService] Phantom({enemy.EntityId}) teleported {from} → {enemy.Position}");
+                    break;
+                }
+
+                // A6: boss summons minions
+                case IntentType.SummonMinions:
+                {
+                    foreach (var pos in intent.SpawnPositions)
+                    {
+                        var minion = new EnemyCombatModel(model.NextEntityId(), intent.MinionType, pos, intent.MinionHP);
+                        model.Enemies.Add(minion);
+                        EventBus.Publish(new EnemySpawnedEvent
+                        {
+                            EntityId = minion.EntityId,
+                            Type     = minion.Type,
+                            Position = pos
+                        });
+                        Debug.Log($"[AIService] Boss summoned {minion.Type} at {pos}");
+                    }
+                    break;
+                }
+
+                // A6: boss 2×2 area slam
+                case IntentType.AreaAttack:
+                {
+                    if (intent.AttackCells.Contains(model.Player.Position))
+                        _damageService.ApplyDamageToPlayer(model.Player, intent.Damage);
+                    Debug.Log($"[AIService] AreaAttack — player hit={intent.AttackCells.Contains(model.Player.Position)}");
                     break;
                 }
 

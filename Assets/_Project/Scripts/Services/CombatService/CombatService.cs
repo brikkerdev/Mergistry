@@ -119,8 +119,10 @@ namespace Mergistry.Services
             foreach (var off in offsets)
             {
                 var target = pos + off;
-                if (!grid.IsInBounds(target.x, target.y)) continue;
-                if (IsOccupiedByEnemy(target, combat)) continue;
+                if (!grid.IsInBounds(target.x, target.y))   continue;
+                if (IsOccupiedByEnemy(target, combat))       continue;
+                if (IsBlockedByInteractable(target, combat)) continue;
+                if (IsOccupiedByBoss(target, combat))        continue;
                 result.Add(target);
             }
 
@@ -323,6 +325,26 @@ namespace Mergistry.Services
         {
             foreach (var enemy in model.Enemies)
                 if (!enemy.IsDead && enemy.Position == pos) return true;
+            return false;
+        }
+
+        // A6: block player movement into boss 2×2 footprint
+        private static bool IsOccupiedByBoss(Vector2Int pos, CombatModel model)
+        {
+            if (!model.IsBossFight || model.BossEnemy == null || model.BossEnemy.IsDead)
+                return false;
+            var bp = model.BossEnemy.Position;
+            return pos == bp
+                || pos == bp + new Vector2Int(1, 0)
+                || pos == bp + new Vector2Int(0, 1)
+                || pos == bp + new Vector2Int(1, 1);
+        }
+
+        // A6: block player movement into impassable interactables (Pillars)
+        private static bool IsBlockedByInteractable(Vector2Int pos, CombatModel model)
+        {
+            foreach (var it in model.Interactables)
+                if (!it.IsPassable && !it.IsDestroyed && it.Position == pos) return true;
             return false;
         }
 

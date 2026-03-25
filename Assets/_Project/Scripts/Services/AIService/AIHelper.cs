@@ -146,5 +146,66 @@ namespace Mergistry.Services
             }
             return cells;
         }
+
+        // ── A6: Boss movement helpers ────────────────────────────────────────
+
+        /// <summary>
+        /// Returns footprint of a 2×2 boss whose top-left is at pos.
+        /// </summary>
+        internal static IEnumerable<Vector2Int> BossFootprint(Vector2Int topLeft)
+        {
+            yield return topLeft;
+            yield return topLeft + new Vector2Int(1, 0);
+            yield return topLeft + new Vector2Int(0, 1);
+            yield return topLeft + new Vector2Int(1, 1);
+        }
+
+        /// <summary>
+        /// Steps a 2×2 boss one cell toward the player, checking that the full footprint
+        /// remains in bounds and doesn't overlap the player or other enemies.
+        /// Returns the original position if no valid step exists.
+        /// </summary>
+        internal static Vector2Int StepBossToward(Vector2Int bossPos, CombatModel model)
+        {
+            var to = model.Player.Position;
+            int dx = to.x - bossPos.x;
+            int dy = to.y - bossPos.y;
+
+            var step = Mathf.Abs(dx) >= Mathf.Abs(dy)
+                ? new Vector2Int(dx > 0 ? 1 : -1, 0)
+                : new Vector2Int(0, dy > 0 ? 1 : -1);
+
+            var candidate = bossPos + step;
+            return BossCanMoveTo(candidate, model) ? candidate : bossPos;
+        }
+
+        /// <summary>Steps a 2×2 boss one cell away from the player.</summary>
+        internal static Vector2Int StepBossAway(Vector2Int bossPos, CombatModel model)
+        {
+            var to = model.Player.Position;
+            int dx = bossPos.x - to.x;
+            int dy = bossPos.y - to.y;
+
+            if (dx == 0 && dy == 0) dx = 1; // fallback
+
+            var step = Mathf.Abs(dx) >= Mathf.Abs(dy)
+                ? new Vector2Int(dx > 0 ? 1 : -1, 0)
+                : new Vector2Int(0, dy > 0 ? 1 : -1);
+
+            var candidate = bossPos + step;
+            return BossCanMoveTo(candidate, model) ? candidate : bossPos;
+        }
+
+        private static bool BossCanMoveTo(Vector2Int topLeft, CombatModel model)
+        {
+            foreach (var cell in BossFootprint(topLeft))
+            {
+                if (!model.Grid.IsInBounds(cell.x, cell.y)) return false;
+                if (cell == model.Player.Position)           return false;
+                foreach (var e in model.Enemies)
+                    if (!e.IsDead && e.Position == cell)     return false;
+            }
+            return true;
+        }
     }
 }

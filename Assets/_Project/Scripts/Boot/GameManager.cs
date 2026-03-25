@@ -9,6 +9,7 @@ using Mergistry.UI.Screens;
 using Mergistry.Views.Board;
 using Mergistry.Views.Combat;
 using UnityEngine;
+// A6: BossState namespace already in Mergistry.GameStates
 
 
 namespace Mergistry.Boot
@@ -30,6 +31,7 @@ namespace Mergistry.Boot
         private MapState          _mapState;          // A4
         private EventState        _eventState;        // A4
         private RelicChoiceState  _relicChoiceState;  // A5
+        private BossState         _bossState;         // A6
 
         // ── Dev access ────────────────────────────────────────────────────────
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -43,6 +45,7 @@ namespace Mergistry.Boot
         public MapState          DevMapState           => _mapState;
         public EventState        DevEventState         => _eventState;
         public RelicChoiceState  DevRelicChoiceState   => _relicChoiceState;
+        public BossState         DevBossState          => _bossState;          // A6
 #endif
 
         private void Awake()  => Debug.Log("[GameManager] Awake");
@@ -158,6 +161,9 @@ namespace Mergistry.Boot
             relicBarGo.transform.position = new Vector3(0f, 3.6f, -0.5f);
             var relicBarView = relicBarGo.AddComponent<RelicBarView>();
 
+            var bossHPBarGo = new GameObject("BossHPBar"); // A6
+            var bossHPBar   = bossHPBarGo.AddComponent<BossHPBarView>();
+
             // ── States ────────────────────────────────────────────────────────
             _combatState = new CombatState(
                 gridView, playerView, combatInput,
@@ -171,6 +177,14 @@ namespace Mergistry.Boot
                 actionCounter, inventoryView, replacePopup, _inventory,
                 _fsm, _combatState, fadeView,
                 _runModel, bookScreen, relicService); // A5: pass relicService for Cube relic
+
+            // A6: BossState — same view deps as CombatState, adds BossHPBarView
+            _bossState = new BossState(
+                gridView, playerView, combatInput,
+                combatService, damageService, aiService,
+                inventoryView, fadeView, effectView, skipButton,
+                _inventory, bossHPBar);
+            _distillationState.SetBossState(_bossState); // A6: route Boss nodes here
 
             // EventState constructed before MapState (both reference each other via Set methods)
             _eventState = new EventState(eventScreen, _fsm, fadeView,
@@ -199,6 +213,11 @@ namespace Mergistry.Boot
             _combatState.SetFlowDependencies(
                 _fsm, _runModel, healthBarView, _mapState, _resultState,
                 relicService, relicBarView, _relicChoiceState); // A5
+
+            // A6: wire BossState flow (victory → mapState, defeat → resultState)
+            _bossState.SetFlowDependencies(
+                _fsm, _runModel, healthBarView, _mapState, _resultState,
+                relicService, relicBarView);
 
             // Wire result state into MapState (for game-win path)
             _mapState.SetResultState(_resultState);

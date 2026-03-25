@@ -30,6 +30,12 @@ namespace Mergistry.Views.Combat
         private static readonly Color MirrorSlimeColor   = new Color(0.50f, 0.80f, 0.90f);
         private static readonly Color PhantomColor       = new Color(0.75f, 0.60f, 0.95f);
         private static readonly Color NecromancerColor   = new Color(0.30f, 0.15f, 0.50f);
+        // A6: boss colors
+        private static readonly Color SpiderQueenColor   = new Color(0.60f, 0.20f, 0.65f);
+        private static readonly Color IronGolemColor     = new Color(0.55f, 0.62f, 0.72f);
+        private static readonly Color AlchemistColor     = new Color(0.20f, 0.70f, 0.50f);
+        private static readonly Color SummonIconColor    = new Color(0.80f, 0.30f, 0.80f);
+        private static readonly Color AreaAttackColor    = new Color(0.95f, 0.35f, 0.05f);
 
         public int EntityId { get; private set; }
 
@@ -68,9 +74,13 @@ namespace Mergistry.Views.Combat
                     BuildArmoredBeetle();
                     BuildArmorIndicators(enemy.ArmorPoints);
                     break;
-                case EnemyType.MirrorSlime:   BuildMirrorSlime();   break;
-                case EnemyType.Phantom:       BuildPhantom();       break;
-                case EnemyType.Necromancer:   BuildNecromancer();   break;
+                case EnemyType.MirrorSlime:      BuildMirrorSlime();   break;
+                case EnemyType.Phantom:          BuildPhantom();       break;
+                case EnemyType.Necromancer:      BuildNecromancer();   break;
+                // A6: bosses (2×2 visual)
+                case EnemyType.SpiderQueen:      BuildSpiderQueen();   break;
+                case EnemyType.IronGolem:        BuildIronGolem();     break;
+                case EnemyType.RenegadeAlchemist:BuildAlchemist();     break;
             }
 
             BuildIntentIcon();
@@ -147,6 +157,17 @@ namespace Mergistry.Views.Combat
                 case IntentType.Revive:
                     _intentIconRenderer.material.color = ReviveIconColor;
                     _intentText.text = "+";
+                    HideTimer();
+                    break;
+                // A6: boss intents
+                case IntentType.SummonMinions:
+                    _intentIconRenderer.material.color = SummonIconColor;
+                    _intentText.text = "S";
+                    HideTimer();
+                    break;
+                case IntentType.AreaAttack:
+                    _intentIconRenderer.material.color = AreaAttackColor;
+                    _intentText.text = "A";
                     HideTimer();
                     break;
             }
@@ -258,6 +279,58 @@ namespace Mergistry.Views.Combat
             MakeQuad("NecroHood", new Vector3(0f, 0.45f, 0.01f), new Vector3(0.70f, 0.35f, 1f),
                      new Color(NecromancerColor.r * 1.4f, NecromancerColor.g * 1.4f, NecromancerColor.b * 1.4f, 1f),
                      shader, transform);
+        }
+
+        // ── A6: Boss builds (2×2 placeholder quads) ──────────────────────────
+
+        private void BuildSpiderQueen()
+        {
+            _baseBodyColor = SpiderQueenColor;
+            var shader = Shader.Find("Unlit/Color");
+            // Large body spanning ~2 cells
+            var go = MakeQuad("QueenBody", new Vector3(0.53f, 0.53f, 0f), new Vector3(1.85f, 1.85f, 1f),
+                               _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            // Eight leg lines (4 quads)
+            MakeQuad("Leg1", new Vector3(-0.55f, 0.80f, 0.01f), new Vector3(0.55f, 0.08f, 1f),
+                     new Color(SpiderQueenColor.r * 0.7f, SpiderQueenColor.g * 0.7f, SpiderQueenColor.b * 0.7f), shader, transform);
+            MakeQuad("Leg2", new Vector3( 1.60f, 0.80f, 0.01f), new Vector3(0.55f, 0.08f, 1f),
+                     new Color(SpiderQueenColor.r * 0.7f, SpiderQueenColor.g * 0.7f, SpiderQueenColor.b * 0.7f), shader, transform);
+            // Eyes
+            MakeQuad("Eyes", new Vector3(0.53f, 1.20f, -0.01f), new Vector3(0.60f, 0.18f, 1f),
+                     new Color(1f, 0.9f, 0.0f), shader, transform);
+        }
+
+        private void BuildIronGolem()
+        {
+            _baseBodyColor = IronGolemColor;
+            var shader = Shader.Find("Unlit/Color");
+            // Chunky rectangular body
+            var go = MakeQuad("GolemBody", new Vector3(0.53f, 0.53f, 0f), new Vector3(1.80f, 1.90f, 1f),
+                               _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            // Darker chest panel
+            MakeQuad("Chest", new Vector3(0.53f, 0.40f, -0.01f), new Vector3(1.10f, 0.80f, 1f),
+                     new Color(IronGolemColor.r * 0.7f, IronGolemColor.g * 0.7f, IronGolemColor.b * 0.7f), shader, transform);
+            // Magnetic rings (horizontal strips)
+            MakeQuad("Ring1", new Vector3(0.53f, 0.90f, -0.02f), new Vector3(1.90f, 0.10f, 1f),
+                     new Color(0.30f, 0.50f, 1.00f), shader, transform);
+        }
+
+        private void BuildAlchemist()
+        {
+            _baseBodyColor = AlchemistColor;
+            var shader = Shader.Find("Unlit/Color");
+            // Robed figure larger than necromancer
+            var go = MakeQuad("AlchRobe", new Vector3(0.53f, 0.40f, 0f), new Vector3(1.20f, 1.60f, 1f),
+                               _baseBodyColor, shader);
+            _bodyRenderer = go.GetComponent<MeshRenderer>();
+            // Hood
+            MakeQuad("AlchHood", new Vector3(0.53f, 1.15f, -0.01f), new Vector3(1.40f, 0.60f, 1f),
+                     new Color(AlchemistColor.r * 1.3f, AlchemistColor.g * 0.6f, AlchemistColor.b * 0.8f), shader, transform);
+            // Bubbling flask
+            MakeQuad("Flask", new Vector3(1.10f, 0.30f, -0.01f), new Vector3(0.45f, 0.65f, 1f),
+                     new Color(0.85f, 0.30f, 0.10f), shader, transform);
         }
 
         private void BuildArmorIndicators(int maxArmor)

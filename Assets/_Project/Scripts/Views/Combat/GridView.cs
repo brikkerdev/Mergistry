@@ -6,10 +6,11 @@ using UnityEngine;
 namespace Mergistry.Views.Combat
 {
     /// <summary>
-    /// Renders the 5×5 combat grid with three overlay layers:
+    /// Renders the combat grid (normally 5×5, 6×6 for boss fights) with three overlay layers:
     /// blue = valid move/throw targets,
     /// red  = potion AoE,
     /// orange = enemy intent attack highlights.
+    /// A6: Rebuild() support to switch between 5×5 and 6×6.
     /// </summary>
     public class GridView : MonoBehaviour
     {
@@ -22,16 +23,30 @@ namespace Mergistry.Views.Combat
         private static readonly Color HighlightRed    = new Color(0.85f, 0.20f, 0.15f);
         private static readonly Color HighlightOrange = new Color(0.90f, 0.50f, 0.10f);
 
-        private MeshRenderer[,] _highlightRenderers; // blue
-        private MeshRenderer[,] _aoeRenderers;       // red
-        private MeshRenderer[,] _intentRenderers;    // orange
+        private MeshRenderer[,]  _highlightRenderers; // blue
+        private MeshRenderer[,]  _aoeRenderers;       // red
+        private MeshRenderer[,]  _intentRenderers;    // orange
+        private List<GameObject> _rootCells = new List<GameObject>(); // A6: tracked for Rebuild
 
         private void Awake() => Build();
 
         // ── Build ─────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// A6: Destroys all existing cell GameObjects and rebuilds with current GridModel dimensions.
+        /// Call AFTER updating GridModel.Width / GridModel.Height.
+        /// </summary>
+        public void Rebuild()
+        {
+            foreach (var go in _rootCells)
+                if (go != null) Destroy(go);
+            _rootCells.Clear();
+            Build();
+        }
+
         private void Build()
         {
+            _rootCells.Clear();
             _highlightRenderers = new MeshRenderer[GridModel.Width, GridModel.Height];
             _aoeRenderers       = new MeshRenderer[GridModel.Width, GridModel.Height];
             _intentRenderers    = new MeshRenderer[GridModel.Width, GridModel.Height];
@@ -45,6 +60,7 @@ namespace Mergistry.Views.Combat
                 cellGo.transform.localPosition = LocalPos(x, y);
                 cellGo.transform.localScale    = Vector3.one * CellSize;
                 Destroy(cellGo.GetComponent<MeshCollider>());
+                _rootCells.Add(cellGo); // A6: track for Rebuild
 
                 var rend = cellGo.GetComponent<MeshRenderer>();
                 var floorShader = Shader.Find("Mergistry/SH_Floor");

@@ -30,6 +30,7 @@ namespace Mergistry.GameStates
         private readonly RunModel             _runModel;
         private readonly BookScreen           _bookScreen;
         private readonly IRelicService        _relicService;  // A5
+        private          BossState            _bossState;     // A6 (optional)
 
         private int        _seed;
         private int        _actionsRemaining;
@@ -67,6 +68,9 @@ namespace Mergistry.GameStates
             _bookScreen          = bookScreen;
             _relicService        = relicService;       // A5
         }
+
+        /// <summary>A6: Wire BossState so Boss nodes route here after distillation.</summary>
+        public void SetBossState(BossState bossState) => _bossState = bossState;
 
         public void Enter()
         {
@@ -263,8 +267,14 @@ namespace Mergistry.GameStates
             if (_pendingBrews == null || _pendingBrews.Count == 0)
             {
                 _inventoryView.Refresh(_inventory);
-                Debug.Log("[DistillationState] Brews collected. Transitioning to CombatState.");
-                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_combatState));
+
+                // A6: route to BossState for Boss nodes, otherwise CombatState
+                IGameState nextState = (_runModel?.CurrentNodeType == Data.MapNodeType.Boss && _bossState != null)
+                    ? (IGameState)_bossState
+                    : _combatState;
+
+                Debug.Log($"[DistillationState] Brews collected. Transitioning to {nextState.GetType().Name}.");
+                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(nextState));
                 return;
             }
 

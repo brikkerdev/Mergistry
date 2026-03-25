@@ -111,4 +111,17 @@ namespace Mergistry.Events
         public EventNodeType EventType;
         public string        OutcomeType;
     }
+
+    // --- A6: Boss events ---
+    public struct EnemySpawnedEvent
+    {
+        public int        EntityId;
+        public EnemyType  Type;
+        public Vector2Int Position;
+    }
+
+    public struct BossPhaseChangedEvent
+    {
+        public BossPhase NewPhase;
+    }
 }

@@ -6,8 +6,9 @@ namespace Mergistry.Models.Combat
 {
     public class GridModel
     {
-        public const int Width  = 5;
-        public const int Height = 5;
+        // A6: mutable so BossState can expand to 6×6 and restore
+        public static int Width  = 5;
+        public static int Height = 5;
 
         // A3: active zones on the field
         public List<ZoneInstance> Zones { get; } = new List<ZoneInstance>();
