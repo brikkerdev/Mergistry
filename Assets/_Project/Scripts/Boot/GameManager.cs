@@ -1,7 +1,9 @@
 using Mergistry.Core;
 using Mergistry.GameStates;
+using Mergistry.Models;
 using Mergistry.Services;
 using Mergistry.UI.HUD;
+using Mergistry.UI.Popups;
 using Mergistry.UI.Screens;
 using Mergistry.Views.Board;
 using UnityEngine;
@@ -32,10 +34,14 @@ namespace Mergistry.Boot
             var dragController = FindFirstObjectByType<BoardDragController>(FindObjectsInactive.Include);
             var menuScreenView = FindFirstObjectByType<MenuScreenView>(FindObjectsInactive.Include);
             var actionCounter  = FindFirstObjectByType<ActionCounterView>(FindObjectsInactive.Include);
+            var inventoryView  = FindFirstObjectByType<InventoryView>(FindObjectsInactive.Include);
+            var replacePopup   = FindFirstObjectByType<SlotReplacePopup>(FindObjectsInactive.Include);
 
-            Debug.Log($"[GameManager] board={boardView}, drag={dragController}, menu={menuScreenView}, counter={actionCounter}");
+            Debug.Log($"[GameManager] board={boardView}, drag={dragController}, menu={menuScreenView}, " +
+                      $"counter={actionCounter}, inventory={inventoryView}, popup={replacePopup}");
 
-            if (boardView == null || dragController == null || menuScreenView == null || actionCounter == null)
+            if (boardView == null || dragController == null || menuScreenView == null ||
+                actionCounter == null || inventoryView == null || replacePopup == null)
             {
                 Debug.LogError("[GameManager] Missing required references!");
                 return;
@@ -44,6 +50,7 @@ namespace Mergistry.Boot
             _fsm = new GameStateMachine();
             boardView.gameObject.SetActive(false);
             actionCounter.gameObject.SetActive(false);
+            inventoryView.gameObject.SetActive(false);
 
             // Register DistillationService if not already (fallback for editor start-from-Game)
             if (!ServiceLocator.TryGet<DistillationService>(out var distillationService))
@@ -52,8 +59,14 @@ namespace Mergistry.Boot
                 ServiceLocator.Register(distillationService);
             }
 
-            var distillationState = new DistillationState(boardView, dragController, distillationService, actionCounter);
-            var menuState         = new MenuState(menuScreenView, _fsm, distillationState);
+            var inventory = new InventoryModel();
+            inventoryView.Refresh(inventory);
+
+            var distillationState = new DistillationState(
+                boardView, dragController, distillationService,
+                actionCounter, inventoryView, replacePopup, inventory);
+
+            var menuState = new MenuState(menuScreenView, _fsm, distillationState);
 
             _fsm.ChangeState(menuState);
             Debug.Log("[GameManager] FSM started → MenuState");

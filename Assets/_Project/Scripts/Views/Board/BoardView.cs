@@ -12,6 +12,7 @@ namespace Mergistry.Views.Board
         private GameObject[,]    _cellObjects      = new GameObject[BoardModel.Size, BoardModel.Size];
         private GameObject[,]    _highlightObjects = new GameObject[BoardModel.Size, BoardModel.Size];
         private IngredientView[,] _ingredientViews = new IngredientView[BoardModel.Size, BoardModel.Size];
+        private BrewView[,]       _brewViews        = new BrewView[BoardModel.Size, BoardModel.Size];
 
         private BoardModel _board;
 
@@ -33,6 +34,7 @@ namespace Mergistry.Views.Board
             _cellObjects      = new GameObject[BoardModel.Size, BoardModel.Size];
             _highlightObjects = new GameObject[BoardModel.Size, BoardModel.Size];
             _ingredientViews  = new IngredientView[BoardModel.Size, BoardModel.Size];
+            _brewViews         = new BrewView[BoardModel.Size, BoardModel.Size];
         }
 
         public Vector3 GetCellWorldPosition(int x, int y) =>
@@ -55,6 +57,9 @@ namespace Mergistry.Views.Board
         public IngredientView GetIngredientAt(int x, int y) =>
             (_board != null && _board.IsInBounds(x, y)) ? _ingredientViews[x, y] : null;
 
+        public BrewView GetBrewAt(int x, int y) =>
+            (_board != null && _board.IsInBounds(x, y)) ? _brewViews[x, y] : null;
+
         public void SetHighlight(int x, int y, bool active)
         {
             if (_board != null && _board.IsInBounds(x, y))
@@ -66,6 +71,37 @@ namespace Mergistry.Views.Board
             for (int x = 0; x < BoardModel.Size; x++)
                 for (int y = 0; y < BoardModel.Size; y++)
                     SetHighlight(x, y, false);
+        }
+
+        // ── Brew/Ingredient manipulation ────────────────────────────────────
+
+        public void RemoveIngredient(int x, int y)
+        {
+            if (_ingredientViews[x, y] == null) return;
+            Destroy(_ingredientViews[x, y].gameObject);
+            _ingredientViews[x, y] = null;
+        }
+
+        public void RemoveBrew(int x, int y)
+        {
+            if (_brewViews[x, y] == null) return;
+            Destroy(_brewViews[x, y].gameObject);
+            _brewViews[x, y] = null;
+        }
+
+        public void PlaceBrew(int x, int y, PotionType potionType, ElementType element, int level)
+        {
+            RemoveBrew(x, y);
+            var go   = new GameObject($"Brew_{x}_{y}");
+            go.transform.SetParent(transform);
+            var view = go.AddComponent<BrewView>();
+            view.Initialize(potionType, element, level, GetCellWorldPosition(x, y) + new Vector3(0f, 0f, -0.05f));
+            _brewViews[x, y] = view;
+        }
+
+        public void UpgradeBrew(int x, int y, int newLevel)
+        {
+            _brewViews[x, y]?.SetLevel(newLevel);
         }
 
         // ── Private ─────────────────────────────────────────────────────────
