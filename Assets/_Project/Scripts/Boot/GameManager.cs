@@ -41,19 +41,22 @@ namespace Mergistry.Boot
             var replacePopup   = FindFirstObjectByType<SlotReplacePopup>(FindObjectsInactive.Include);
 
             // ── Combat dependencies ───────────────────────────────────────────
-            var gridView        = FindFirstObjectByType<GridView>(FindObjectsInactive.Include);
-            var playerView      = FindFirstObjectByType<PlayerView>(FindObjectsInactive.Include);
-            var combatInput     = FindFirstObjectByType<CombatInputController>(FindObjectsInactive.Include);
-            var fadeView        = FindFirstObjectByType<FadeView>(FindObjectsInactive.Include);
+            var gridView    = FindFirstObjectByType<GridView>(FindObjectsInactive.Include);
+            var playerView  = FindFirstObjectByType<PlayerView>(FindObjectsInactive.Include);
+            var combatInput = FindFirstObjectByType<CombatInputController>(FindObjectsInactive.Include);
+            var fadeView    = FindFirstObjectByType<FadeView>(FindObjectsInactive.Include);
+            var effectView  = FindFirstObjectByType<EffectView>(FindObjectsInactive.Include);
+            var skipButton  = FindFirstObjectByType<SkipTurnButtonView>(FindObjectsInactive.Include);
 
             Debug.Log($"[GameManager] board={boardView}, drag={dragController}, menu={menuScreenView}, " +
                       $"counter={actionCounter}, inventory={inventoryView}, popup={replacePopup}");
-            Debug.Log($"[GameManager] grid={gridView}, player={playerView}, " +
-                      $"combatInput={combatInput}, fade={fadeView}");
+            Debug.Log($"[GameManager] grid={gridView}, player={playerView}, combatInput={combatInput}, " +
+                      $"fade={fadeView}, effect={effectView}, skip={skipButton}");
 
             if (boardView == null || dragController == null || menuScreenView == null ||
                 actionCounter == null || inventoryView == null || replacePopup == null ||
-                gridView == null || playerView == null || combatInput == null || fadeView == null)
+                gridView == null || playerView == null || combatInput == null || fadeView == null ||
+                effectView == null || skipButton == null)
             {
                 Debug.LogError("[GameManager] Missing required references!");
                 return;
@@ -67,8 +70,9 @@ namespace Mergistry.Boot
             inventoryView.gameObject.SetActive(false);
             gridView.gameObject.SetActive(false);
             playerView.gameObject.SetActive(false);
+            skipButton.gameObject.SetActive(false);
 
-            // Services
+            // ── Services ──────────────────────────────────────────────────────
             if (!ServiceLocator.TryGet<DistillationService>(out var distillationService))
             {
                 distillationService = new DistillationService();
@@ -81,13 +85,23 @@ namespace Mergistry.Boot
                 ServiceLocator.Register(combatService);
             }
 
-            // Models
+            if (!ServiceLocator.TryGet<DamageService>(out var damageService))
+            {
+                damageService = new DamageService();
+                ServiceLocator.Register(damageService);
+            }
+
+            // ── Models ────────────────────────────────────────────────────────
             var inventory = new InventoryModel();
             inventoryView.Refresh(inventory);
 
-            // States
+            // ── States ────────────────────────────────────────────────────────
             var combatState = new CombatState(
-                gridView, playerView, combatInput, combatService, inventoryView, fadeView);
+                gridView, playerView, combatInput,
+                combatService, damageService,
+                inventoryView, fadeView,
+                effectView, skipButton,
+                inventory);
 
             var distillationState = new DistillationState(
                 boardView, dragController, distillationService,

@@ -57,6 +57,7 @@
     <Compile Include="Assets\_Project\Scripts\Services\DistillationService\DistillationService.cs" />
     <Compile Include="Assets\_Project\Scripts\GameStates\DistillationState\DistillationState.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\InventoryModel.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\EffectView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\IngredientView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BrewView.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\HUD\InventoryView.cs" />
@@ -70,6 +71,7 @@
     <Compile Include="Assets\_Project\Scripts\Models\Combat\PlayerCombatModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\GridView.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\ElementType.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\DamageService\DamageService.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\GameManager.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\FadeView.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\GameStateMachine.cs" />
@@ -77,6 +79,7 @@
     <Compile Include="Assets\_Project\Scripts\Core\EventBus\EventBus.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Popups\SlotReplacePopup.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Board\BoardDragController.cs" />
+    <Compile Include="Assets\_Project\Scripts\Views\Combat\SkipTurnButtonView.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\Bootstrapper.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\PlayerView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\CombatInputController.cs" />

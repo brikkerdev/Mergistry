@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Mergistry.Models.Combat;
 using UnityEngine;
@@ -6,7 +7,8 @@ namespace Mergistry.Views.Combat
 {
     /// <summary>
     /// Renders the 5×5 combat grid. Cells are dark quads with thin separator gaps.
-    /// Exposes highlight helpers and world↔grid coordinate conversion.
+    /// Exposes highlight helpers (blue = valid targets, red = AoE) and
+    /// world↔grid coordinate conversion.
     /// </summary>
     public class GridView : MonoBehaviour
     {
@@ -15,9 +17,13 @@ namespace Mergistry.Views.Combat
         private const float CellStep = CellSize + CellGap;
 
         private static readonly Color CellColor      = new Color(0.13f, 0.15f, 0.20f);
-        private static readonly Color HighlightColor = new Color(0.20f, 0.50f, 0.80f);
+        private static readonly Color HighlightBlue  = new Color(0.20f, 0.50f, 0.80f);
+        private static readonly Color HighlightRed   = new Color(0.85f, 0.20f, 0.15f);
 
+        // Blue overlays — valid movement/throw targets
         private MeshRenderer[,] _highlightRenderers;
+        // Red overlays — AoE preview
+        private MeshRenderer[,] _aoeRenderers;
 
         private void Awake() => Build();
 
@@ -26,6 +32,7 @@ namespace Mergistry.Views.Combat
         private void Build()
         {
             _highlightRenderers = new MeshRenderer[GridModel.Width, GridModel.Height];
+            _aoeRenderers       = new MeshRenderer[GridModel.Width, GridModel.Height];
 
             for (int x = 0; x < GridModel.Width; x++)
             {
@@ -43,23 +50,30 @@ namespace Mergistry.Views.Combat
                     rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     rend.receiveShadows    = false;
 
-                    // Highlight overlay (slightly in front, hidden by default)
-                    var hlGo = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                    hlGo.name = $"Hl_{x}_{y}";
-                    hlGo.transform.SetParent(cellGo.transform);
-                    hlGo.transform.localPosition = new Vector3(0f, 0f, -0.01f);
-                    hlGo.transform.localScale     = Vector3.one * 0.92f;
-                    Destroy(hlGo.GetComponent<MeshCollider>());
+                    // Blue highlight overlay (valid targets)
+                    _highlightRenderers[x, y] = MakeOverlay(cellGo.transform, "Hl", -0.01f, HighlightBlue);
 
-                    var hlRend = hlGo.GetComponent<MeshRenderer>();
-                    hlRend.material = new Material(Shader.Find("Unlit/Color")) { color = HighlightColor };
-                    hlRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                    hlRend.receiveShadows    = false;
-                    hlGo.SetActive(false);
-
-                    _highlightRenderers[x, y] = hlRend;
+                    // Red AoE overlay (slightly closer than blue)
+                    _aoeRenderers[x, y] = MakeOverlay(cellGo.transform, "Aoe", -0.02f, HighlightRed);
                 }
             }
+        }
+
+        private static MeshRenderer MakeOverlay(Transform parent, string name, float localZ, Color color)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = name;
+            go.transform.SetParent(parent);
+            go.transform.localPosition = new Vector3(0f, 0f, localZ);
+            go.transform.localScale    = Vector3.one * 0.92f;
+            Destroy(go.GetComponent<MeshCollider>());
+
+            var rend = go.GetComponent<MeshRenderer>();
+            rend.material = new Material(Shader.Find("Unlit/Color")) { color = color };
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows    = false;
+            go.SetActive(false);
+            return rend;
         }
 
         // ── Coordinate conversion ─────────────────────────────────────────────
@@ -79,7 +93,7 @@ namespace Mergistry.Views.Combat
             return null;
         }
 
-        // ── Highlights ────────────────────────────────────────────────────────
+        // ── Blue highlights (valid move/throw targets) ────────────────────────
 
         public void SetHighlights(List<Vector2Int> cells)
         {
@@ -93,6 +107,35 @@ namespace Mergistry.Views.Combat
             for (int x = 0; x < GridModel.Width;  x++)
             for (int y = 0; y < GridModel.Height; y++)
                 _highlightRenderers[x, y].gameObject.SetActive(false);
+        }
+
+        // ── Red AoE highlights ────────────────────────────────────────────────
+
+        public void SetAoeHighlights(List<Vector2Int> cells)
+        {
+            ClearAoeHighlights();
+            foreach (var c in cells)
+                _aoeRenderers[c.x, c.y].gameObject.SetActive(true);
+        }
+
+        public void ClearAoeHighlights()
+        {
+            for (int x = 0; x < GridModel.Width;  x++)
+            for (int y = 0; y < GridModel.Height; y++)
+                _aoeRenderers[x, y].gameObject.SetActive(false);
+        }
+
+        /// <summary>Shows red AoE highlights and auto-clears them after <paramref name="duration"/> seconds.</summary>
+        public void SetAoeHighlightsTemporary(List<Vector2Int> cells, float duration = 0.4f)
+        {
+            SetAoeHighlights(cells);
+            StartCoroutine(ClearAoeAfterDelay(duration));
+        }
+
+        private IEnumerator ClearAoeAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            ClearAoeHighlights();
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

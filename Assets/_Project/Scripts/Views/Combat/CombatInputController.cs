@@ -10,17 +10,24 @@ namespace Mergistry.Views.Combat
 {
     /// <summary>
     /// Handles swipe input on the combat grid.
-    /// A drag starting near the player shows a ghost at the nearest valid destination;
-    /// releasing confirms the move.
+    ///
+    /// Movement: a drag starting near the player shows a ghost at the nearest valid
+    /// destination; releasing confirms the move via <see cref="OnMoveRequested"/>.
+    ///
+    /// Tap: a very short drag (< TapThreshold) that did NOT start a movement swipe
+    /// fires <see cref="OnGridTapped"/> with the tapped grid cell.
+    /// CombatState uses this to trigger potion throws.
     /// </summary>
     public class CombatInputController : MonoBehaviour
     {
-        // Max world-space distance from player centre to start tracking a drag.
+        // Max world-space distance from player centre to start tracking a move drag.
         private const float ActivationRadius = 1.0f;
         // Max world-space distance from a candidate cell to snap the ghost to it.
         private const float SnapRadius = 1.2f;
         // Minimum drag length before we start snapping.
         private const float MinDragDelta = 0.25f;
+        // Maximum total drag distance to count as a tap.
+        private const float TapThreshold = 0.15f;
 
         private GridView      _gridView;
         private PlayerView    _playerView;
@@ -28,12 +35,15 @@ namespace Mergistry.Views.Combat
         private CombatService _service;
 
         private bool             _active;
-        private bool             _tracking;
-        private Vector3          _dragStart;
+        private bool             _tracking;        // move-drag is in progress
+        private bool             _wasMoveTracking; // did this drag start as a move drag?
+        private Vector3          _anyDragStart;    // world pos of the most recent drag start
+        private Vector3          _dragStart;       // world pos when move tracking began
         private Vector2Int?      _ghostTarget;
         private List<Vector2Int> _validMoves;
 
         public Action<Vector2Int> OnMoveRequested;
+        public Action<Vector2Int> OnGridTapped;
 
         // ── Init ──────────────────────────────────────────────────────────────
 
@@ -72,14 +82,20 @@ namespace Mergistry.Views.Combat
 
         private void OnDragStart(DragStartEvent e)
         {
+            // Always record tap start
+            _anyDragStart    = e.WorldPosition;
+            _wasMoveTracking = false;
+
+            // Movement tracking: only when near player and player hasn't moved yet
             if (!_active || _model == null || _model.Player.HasMoved) return;
 
             var playerWorld = _gridView.GridToWorld(_model.Player.Position);
             if (Vector3.Distance(e.WorldPosition, playerWorld) > ActivationRadius) return;
 
-            _tracking   = true;
-            _dragStart  = e.WorldPosition;
-            _validMoves = _service.GetValidMoves(_model);
+            _tracking        = true;
+            _wasMoveTracking = true;
+            _dragStart       = e.WorldPosition;
+            _validMoves      = _service.GetValidMoves(_model);
             _gridView.SetHighlights(_validMoves);
         }
 
@@ -109,16 +125,27 @@ namespace Mergistry.Views.Combat
 
         private void OnDragEnd(DragEndEvent e)
         {
-            if (!_tracking) return;
+            bool wasTap = Vector3.Distance(e.WorldPosition, _anyDragStart) < TapThreshold;
 
-            _tracking = false;
-            _playerView.HideGhost();
-            _gridView.ClearHighlights();
+            if (_tracking)
+            {
+                _tracking = false;
+                _playerView.HideGhost();
+                _gridView.ClearHighlights();
 
-            if (_ghostTarget.HasValue)
-                OnMoveRequested?.Invoke(_ghostTarget.Value);
+                if (_ghostTarget.HasValue)
+                    OnMoveRequested?.Invoke(_ghostTarget.Value);
 
-            _ghostTarget = null;
+                _ghostTarget = null;
+            }
+
+            // Tap detection: short drag that was NOT a move swipe
+            if (_active && wasTap && !_wasMoveTracking)
+            {
+                var cell = _gridView?.WorldToGrid(e.WorldPosition);
+                if (cell.HasValue)
+                    OnGridTapped?.Invoke(cell.Value);
+            }
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
@@ -143,8 +170,9 @@ namespace Mergistry.Views.Combat
 
         private void CancelTracking()
         {
-            _tracking    = false;
-            _ghostTarget = null;
+            _tracking        = false;
+            _wasMoveTracking = false;
+            _ghostTarget     = null;
             _playerView?.HideGhost();
             _gridView?.ClearHighlights();
         }
