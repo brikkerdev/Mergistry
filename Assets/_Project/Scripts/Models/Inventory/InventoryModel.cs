@@ -42,6 +42,14 @@ namespace Mergistry.Models
             _slots[slotIndex].CooldownRemaining = 0;
         }
 
+        /// <summary>Returns true if every slot is empty (no potions at all).</summary>
+        public bool IsEmpty()
+        {
+            for (int i = 0; i < SlotCount; i++)
+                if (!_slots[i].IsEmpty) return false;
+            return true;
+        }
+
         /// <summary>Resets all slots to empty (used when starting a new run).</summary>
         public void Clear()
         {

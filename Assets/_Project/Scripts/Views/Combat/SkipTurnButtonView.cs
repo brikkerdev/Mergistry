@@ -33,7 +33,7 @@ namespace Mergistry.Views.Combat
 
             var tm = labelGo.AddComponent<TextMesh>();
             tm.text      = "SKIP";
-            tm.fontSize  = 120;
+            tm.fontSize  = 150;
             tm.fontStyle = FontStyle.Bold;
             tm.color     = new Color(0.85f, 1f, 0.88f);
             tm.anchor    = TextAnchor.MiddleCenter;

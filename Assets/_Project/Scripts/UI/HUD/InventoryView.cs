@@ -126,7 +126,7 @@ namespace Mergistry.UI.HUD
 
                 var tm = labelGo.AddComponent<TextMesh>();
                 tm.text      = "0";
-                tm.fontSize  = 120;
+                tm.fontSize  = 150;
                 tm.fontStyle = FontStyle.Bold;
                 tm.color     = Color.white;
                 tm.anchor    = TextAnchor.MiddleCenter;

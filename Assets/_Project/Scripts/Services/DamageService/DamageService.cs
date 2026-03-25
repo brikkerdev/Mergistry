@@ -13,6 +13,10 @@ namespace Mergistry.Services
     /// </summary>
     public class DamageService : IDamageService
     {
+        private readonly IRelicService _relicService;
+
+        public DamageService(IRelicService relicService) { _relicService = relicService; }
+
         // ── Throw range ─────────────────────────────────────────────────────────
 
         /// <summary>All grid cells within Manhattan distance ≤ range of the player (excluding player's cell).</summary>
@@ -34,7 +38,7 @@ namespace Mergistry.Services
         /// <summary>Returns grid cells hit by the AoE of the given potion type at target.</summary>
         public List<Vector2Int> GetAffectedCells(PotionType type, Vector2Int target, GridModel grid)
         {
-            return type switch
+            var cells = type switch
             {
                 // ── MVP potions ───────────────────────────────────────────────
                 PotionType.Flame     => Cross(target, 1, grid),
@@ -57,6 +61,13 @@ namespace Mergistry.Services
                 PotionType.Chaos     => RandomAoE(target, grid),
                 _                    => new List<Vector2Int> { target }
             };
+
+            // A5: Lens — expand AoE by 1 cell in each direction
+            if (_relicService != null && _relicService.HasRelic(RelicType.Lens))
+            {
+                cells = ExpandAoE(cells, grid);
+            }
+            return cells;
         }
 
         /// <summary>Base damage dealt by a potion at the given level.</summary>
@@ -86,7 +97,13 @@ namespace Mergistry.Services
                 PotionType.Chaos     => Random.Range(1, 5),
                 _                    => 1
             };
-            return Mathf.RoundToInt(baseDamage * scale);
+            int damage = Mathf.RoundToInt(baseDamage * scale);
+
+            // A5: Prism — combo damage ×1.5
+            if (_relicService != null && _relicService.HasRelic(RelicType.Prism))
+                damage = Mathf.RoundToInt(damage * 1.5f);
+
+            return damage;
         }
 
         // ── Damage application ──────────────────────────────────────────────────
@@ -153,6 +170,26 @@ namespace Mergistry.Services
         }
 
         // ── AoE helpers ─────────────────────────────────────────────────────────
+
+        /// <summary>Expands AoE by adding all adjacent cells (Manhattan 1) of existing cells.</summary>
+        private static List<Vector2Int> ExpandAoE(List<Vector2Int> original, GridModel grid)
+        {
+            var expanded = new HashSet<Vector2Int>(original);
+            foreach (var cell in original)
+            {
+                var neighbors = new[]
+                {
+                    new Vector2Int(cell.x + 1, cell.y),
+                    new Vector2Int(cell.x - 1, cell.y),
+                    new Vector2Int(cell.x, cell.y + 1),
+                    new Vector2Int(cell.x, cell.y - 1)
+                };
+                foreach (var n in neighbors)
+                    if (grid.IsInBounds(n.x, n.y))
+                        expanded.Add(n);
+            }
+            return new List<Vector2Int>(expanded);
+        }
 
         private static List<Vector2Int> Cross(Vector2Int center, int radius, GridModel grid)
         {

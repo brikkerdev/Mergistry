@@ -1,64 +1,102 @@
 using System;
+using System.Collections.Generic;
+using Mergistry.Data;
 using Mergistry.UI.Popups;
 using UnityEngine;
 
 namespace Mergistry.UI.Screens
 {
-    /// <summary>
-    /// World-space stub event screen. Shown when the player visits an Event node.
-    /// Built procedurally following the same pattern as ResultScreenView.
-    /// </summary>
     public class EventScreenView : MonoBehaviour
     {
-        public event Action OnContinueClicked;
+        public event Action<int> OnChoiceClicked;
+        public event Action      OnContinueClicked;
 
         private TextMesh _titleText;
         private TextMesh _descText;
+        private GameObject _continueBtn;
+        private readonly List<GameObject> _choiceButtons = new List<GameObject>();
 
         private void Awake()
         {
-            Build();
+            BuildStaticLayout();
             gameObject.SetActive(false);
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
-
-        public void Show(string title, string description)
+        public void Show(EventDefinition eventDef)
         {
-            _titleText.text = title;
-            _descText.text  = description;
+            ClearChoiceButtons();
+            _titleText.text = eventDef.Title;
+            _descText.text  = eventDef.Description;
+            _continueBtn.SetActive(false);
+
+            // Build choice buttons
+            float startY = -0.4f;
+            float btnGap = 0.75f;
+            for (int i = 0; i < eventDef.Choices.Count; i++)
+            {
+                int idx = i;
+                var choice = eventDef.Choices[i];
+                var btn = BuildChoiceButton($"Choice_{i}", transform,
+                    new Vector3(0f, startY - i * btnGap, -0.1f),
+                    new Vector3(4.0f, 0.55f, 1f),
+                    choice.Label,
+                    new Color(0.22f, 0.45f, 0.70f),
+                    () => OnChoiceClicked?.Invoke(idx));
+                _choiceButtons.Add(btn);
+            }
+
             gameObject.SetActive(true);
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        public void ShowResult(string resultText)
+        {
+            ClearChoiceButtons();
+            _descText.text = resultText;
+            _continueBtn.SetActive(true);
+            gameObject.SetActive(true);
+        }
 
-        // ── Build ─────────────────────────────────────────────────────────────
+        public void Hide()
+        {
+            ClearChoiceButtons();
+            gameObject.SetActive(false);
+        }
 
-        private void Build()
+        private void ClearChoiceButtons()
+        {
+            foreach (var btn in _choiceButtons)
+                if (btn != null) Destroy(btn);
+            _choiceButtons.Clear();
+        }
+
+        private void BuildStaticLayout()
         {
             MakeQuad("Overlay", transform, Vector3.zero,
                 new Vector3(20f, 20f, 1f), new Color(0.04f, 0.05f, 0.14f));
 
             MakeQuad("PanelBorder", transform, new Vector3(0f, 0.3f, -0.04f),
-                new Vector3(5.0f, 3.8f, 1f), new Color(0.30f, 0.42f, 0.65f));
+                new Vector3(5.0f, 5.0f, 1f), new Color(0.30f, 0.42f, 0.65f));
             MakeQuad("Panel", transform, new Vector3(0f, 0.3f, -0.05f),
-                new Vector3(4.8f, 3.6f, 1f), new Color(0.08f, 0.10f, 0.20f));
+                new Vector3(4.8f, 4.8f, 1f), new Color(0.08f, 0.10f, 0.20f));
 
             _titleText = MakeLabel("Title", transform,
-                new Vector3(0f, 1.5f, -0.1f), 0.032f, 60);
+                new Vector3(0f, 2.1f, -0.1f), 0.032f, 150);
             _titleText.color = new Color(0.9f, 0.75f, 0.3f);
 
             _descText = MakeLabel("Desc", transform,
-                new Vector3(0f, 0.5f, -0.1f), 0.018f, 40);
+                new Vector3(0f, 1.2f, -0.1f), 0.016f, 150);
             _descText.color = new Color(0.75f, 0.78f, 0.92f);
 
-            BuildButton("ContinueBtn", transform, new Vector3(0f, -0.85f, -0.1f),
+            // Continue button (hidden by default, shown after outcome)
+            _continueBtn = BuildChoiceButton("ContinueBtn", transform,
+                new Vector3(0f, -1.6f, -0.1f),
                 new Vector3(3.2f, 0.6f, 1f), "Продолжить",
                 new Color(0.22f, 0.50f, 0.80f),
                 () => OnContinueClicked?.Invoke());
+            _continueBtn.SetActive(false);
         }
 
-        private void BuildButton(string goName, Transform parent, Vector3 localPos,
+        private GameObject BuildChoiceButton(string goName, Transform parent, Vector3 localPos,
             Vector3 size, string label, Color faceColor, Action onClick)
         {
             var btn = new GameObject(goName);
@@ -70,7 +108,7 @@ namespace Mergistry.UI.Screens
                 new Color(0.45f, 0.50f, 0.72f));
             MakeQuad("Face", btn.transform, Vector3.zero, size, faceColor);
 
-            var lbl = MakeLabel("Label", btn.transform, new Vector3(0f, 0f, -0.01f), 0.020f, 52);
+            var lbl = MakeLabel("Label", btn.transform, new Vector3(0f, 0f, -0.01f), 0.018f, 150);
             lbl.text  = label;
             lbl.color = Color.white;
 
@@ -79,6 +117,8 @@ namespace Mergistry.UI.Screens
 
             var handler = btn.AddComponent<SlotClickHandler>();
             handler.OnClicked = () => onClick?.Invoke();
+
+            return btn;
         }
 
         private static void MakeQuad(string goName, Transform parent,

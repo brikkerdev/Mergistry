@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mergistry.Core;
+using Mergistry.Data;
 using Mergistry.Models;
 using Mergistry.Services;
 using Mergistry.UI;
@@ -16,18 +17,19 @@ namespace Mergistry.GameStates
     {
         private const int MaxActions = 3;
 
-        private readonly BoardView           _boardView;
-        private readonly BoardDragController _dragController;
+        private readonly BoardView            _boardView;
+        private readonly BoardDragController  _dragController;
         private readonly IDistillationService _distillationService;
-        private readonly ActionCounterView   _actionCounter;
-        private readonly InventoryView       _inventoryView;
-        private readonly SlotReplacePopup    _replacePopup;
-        private readonly InventoryModel      _inventory;
-        private readonly GameStateMachine    _fsm;
-        private readonly CombatState         _combatState;
-        private readonly FadeView            _fadeView;
-        private readonly RunModel            _runModel;
-        private readonly BookScreen          _bookScreen;
+        private readonly ActionCounterView    _actionCounter;
+        private readonly InventoryView        _inventoryView;
+        private readonly SlotReplacePopup     _replacePopup;
+        private readonly InventoryModel       _inventory;
+        private readonly GameStateMachine     _fsm;
+        private readonly CombatState          _combatState;
+        private readonly FadeView             _fadeView;
+        private readonly RunModel             _runModel;
+        private readonly BookScreen           _bookScreen;
+        private readonly IRelicService        _relicService;  // A5
 
         private int        _seed;
         private int        _actionsRemaining;
@@ -40,15 +42,16 @@ namespace Mergistry.GameStates
             BoardView            boardView,
             BoardDragController  dragController,
             IDistillationService distillationService,
-            ActionCounterView   actionCounter,
-            InventoryView       inventoryView,
-            SlotReplacePopup    replacePopup,
-            InventoryModel      inventory,
-            GameStateMachine    fsm,
-            CombatState         combatState,
-            FadeView            fadeView,
-            RunModel            runModel,
-            BookScreen          bookScreen)
+            ActionCounterView    actionCounter,
+            InventoryView        inventoryView,
+            SlotReplacePopup     replacePopup,
+            InventoryModel       inventory,
+            GameStateMachine     fsm,
+            CombatState          combatState,
+            FadeView             fadeView,
+            RunModel             runModel,
+            BookScreen           bookScreen,
+            IRelicService        relicService = null)  // A5
         {
             _boardView           = boardView;
             _dragController      = dragController;
@@ -62,11 +65,15 @@ namespace Mergistry.GameStates
             _fadeView            = fadeView;
             _runModel            = runModel;
             _bookScreen          = bookScreen;
+            _relicService        = relicService;       // A5
         }
 
         public void Enter()
         {
             _actionsRemaining = MaxActions;
+            // A5: Cube — +1 distillation action
+            if (_relicService != null && _relicService.HasRelic(Data.RelicType.Cube))
+                _actionsRemaining++;
             _currentBoard     = _distillationService.GenerateBoard(_seed++, _runModel.CurrentFloor);
 
             _boardView.gameObject.SetActive(true);
@@ -199,7 +206,7 @@ namespace Mergistry.GameStates
             labelGo.transform.localScale    = Vector3.one * 0.016f;
             var tm = labelGo.AddComponent<TextMesh>();
             tm.text      = "RB";
-            tm.fontSize  = 100;
+            tm.fontSize  = 150;
             tm.fontStyle = FontStyle.Bold;
             tm.color     = new Color(0.92f, 0.88f, 0.50f);
             tm.anchor    = TextAnchor.MiddleCenter;
@@ -228,18 +235,28 @@ namespace Mergistry.GameStates
 
         private void OnGoBattleClicked()
         {
-            _dragController.SetActive(false);
-            StartCollectBrews();
-        }
-
-        // ── Collect Brews ────────────────────────────────────────────────────
-
-        private void StartCollectBrews()
-        {
+            // Block transition if inventory is empty and no brews on the board
             var brews = _distillationService.CollectBrews(_currentBoard);
+            bool willHavePotions = !_inventory.IsEmpty() || brews.Count > 0;
+
+            if (!willHavePotions)
+            {
+                // Grant a bonus action so the player can brew something
+                _actionsRemaining = Mathf.Max(_actionsRemaining, 1);
+                _actionCounter.Refresh(_actionsRemaining);
+                _dragController.SetActive(true);
+                Debug.Log("[DistillationState] Cannot go to battle — no potions! Bonus action granted.");
+                return;
+            }
+
+            _dragController.SetActive(false);
+
+            // Brews already collected above — feed them directly
             _pendingBrews = new Queue<DistillationService.BrewEntry>(brews);
             ProcessNextBrew();
         }
+
+        // ── Collect Brews ────────────────────────────────────────────────────
 
         private void ProcessNextBrew()
         {

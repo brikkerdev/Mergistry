@@ -36,6 +36,9 @@ namespace Mergistry.GameStates
         private MapState          _mapState;          // A4: victory goes to map
         private ResultState       _resultState;
         private GameStateMachine  _fsm;
+        private IRelicService     _relicService;      // A5
+        private RelicBarView      _relicBarView;      // A5
+        private RelicChoiceState  _relicChoiceState;  // A5
 
         // ── State ──────────────────────────────────────────────────────────────
         private CombatModel                         _model;
@@ -79,13 +82,19 @@ namespace Mergistry.GameStates
             RunModel          runModel,
             HealthBarView     healthBarView,
             MapState          mapState,          // A4
-            ResultState       resultState)
+            ResultState       resultState,
+            IRelicService     relicService   = null,  // A5
+            RelicBarView      relicBarView   = null,  // A5
+            RelicChoiceState  relicChoiceState = null) // A5
         {
-            _fsm           = fsm;
-            _runModel      = runModel;
-            _healthBarView = healthBarView;
-            _mapState      = mapState;
-            _resultState   = resultState;
+            _fsm              = fsm;
+            _runModel         = runModel;
+            _healthBarView    = healthBarView;
+            _mapState         = mapState;
+            _resultState      = resultState;
+            _relicService     = relicService;
+            _relicBarView     = relicBarView;
+            _relicChoiceState = relicChoiceState;
         }
 
         // ── Dev tools ─────────────────────────────────────────────────────────
@@ -156,7 +165,10 @@ namespace Mergistry.GameStates
             DestroyAllEnemyViews();
             _model.Enemies.Clear();
             _model.Graveyard.Clear();
-            _combatService.SpawnEnemies(_model, fightIndex);
+            // Debug: spawn a single skeleton as fallback
+            var debugSetup = new CombatSetup();
+            debugSetup.Enemies.Add(new EnemySpawnInfo(EnemyType.Skeleton, hp: 3));
+            _combatService.SpawnEnemies(_model, debugSetup);
             SpawnEnemyViews();
             _aiService.DetermineIntents(_model);
             RefreshEnemyIntentHighlights();
@@ -202,16 +214,20 @@ namespace Mergistry.GameStates
             _model = _combatService.InitCombat();
 
             if (_runModel != null)
-                _model.Player.HP = _runModel.PersistentHP;
+            {
+                _model.Player.MaxHP = _runModel.MaxHP;    // A5: sync max HP from run
+                _model.Player.HP    = _runModel.PersistentHP;
+            }
 
-            // A4: choose fight index based on node type
-            int fightIndex = Mathf.Clamp(_runModel?.CurrentFight ?? 0, 0, 9);
-            if (_runModel?.CurrentNodeType == MapNodeType.Elite)
-                fightIndex = 10;
-            else if (_runModel?.CurrentNodeType == MapNodeType.Boss)
-                fightIndex = 11;
+            // Get procedurally generated combat setup from the current map node
+            CombatSetup combatSetup = null;
+            if (_runModel?.FloorMap != null && _runModel.CurrentNodeId >= 0)
+            {
+                var node = _runModel.FloorMap.GetNode(_runModel.CurrentNodeId);
+                combatSetup = node?.CombatSetup;
+            }
 
-            _combatService.SpawnEnemies(_model, fightIndex);
+            _combatService.SpawnEnemies(_model, combatSetup);
             _selectedSlot = -1;
             _phase        = TurnPhase.PlayerTurn;
 
@@ -239,6 +255,13 @@ namespace Mergistry.GameStates
             {
                 _healthBarView.gameObject.SetActive(true);
                 _healthBarView.Refresh(_model.Player.HP, _model.Player.MaxHP);
+            }
+
+            // A5: show relic bar
+            if (_relicBarView != null)
+            {
+                _relicBarView.gameObject.SetActive(true);
+                _relicBarView.Refresh(_relicService?.GetActiveRelics());
             }
 
             EventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
@@ -289,6 +312,10 @@ namespace Mergistry.GameStates
 
             if (_healthBarView != null)
                 _healthBarView.gameObject.SetActive(false);
+
+            // A5: hide relic bar
+            if (_relicBarView != null)
+                _relicBarView.gameObject.SetActive(false);
         }
 
         public void Tick() { }
@@ -671,10 +698,21 @@ namespace Mergistry.GameStates
             if (_runModel == null || _fsm == null) return;
 
             _runModel.PersistentHP = _model.Player.HP;
+
+            // A5: Flask — heal 1 HP after each combat victory (capped at MaxHP)
+            if (_relicService?.HasRelic(Data.RelicType.Flask) == true)
+                _runModel.PersistentHP = Mathf.Min(_runModel.PersistentHP + 1, _runModel.MaxHP);
+
             _runModel.CurrentFight++;
 
-            // A4: return to map so it can mark the node visited and unlock successors
-            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_mapState));
+            // A5: refresh relic bar after potential Flask effect
+            _relicBarView?.Refresh(_relicService?.GetActiveRelics());
+
+            // A5: Elite combat → offer relic choice; otherwise return to map
+            if (_runModel.CurrentNodeType == MapNodeType.Elite && _relicChoiceState != null)
+                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_relicChoiceState));
+            else
+                _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_mapState));
         }
 
         private void OnCombatDefeat()

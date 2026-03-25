@@ -8,7 +8,7 @@ namespace Mergistry.Services
     public interface ICombatService
     {
         CombatModel InitCombat();
-        void SpawnEnemies(CombatModel model, int fightIndex);
+        void SpawnEnemies(CombatModel model, CombatSetup setup);
         List<Vector2Int> GetValidMoves(CombatModel combat);
         bool ThrowPotion(CombatModel model, InventoryModel inventory, int slotIndex, Vector2Int targetCell);
         void StartNextPlayerTurn(CombatModel model, InventoryModel inventory);

@@ -99,4 +99,16 @@ namespace Mergistry.Events
     // --- Game Flow ---
     public struct DistillationPhaseStartedEvent { }
     public struct CombatPhaseStartedEvent       { }
+
+    // --- A5: Events & Relics ---
+    public struct RelicAcquiredEvent
+    {
+        public RelicType Type;
+    }
+
+    public struct EventChoiceMadeEvent
+    {
+        public EventNodeType EventType;
+        public string        OutcomeType;
+    }
 }

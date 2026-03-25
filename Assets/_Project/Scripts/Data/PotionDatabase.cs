@@ -48,6 +48,21 @@ namespace Mergistry.Data
             new PotionEntry { Type = PotionType.Chaos,     Name = "Хаос",      IngredientA = Lx, IngredientB = Um, DamagePerLevel = 2, AoEPattern = "Случайная",     EffectDesc = "Случайный эффект",       IsBase = false },
         };
 
+        /// <summary>Returns the display name for a given PotionType, or "?" if unknown.</summary>
+        public static string GetName(PotionType type)
+        {
+            foreach (var e in All)
+                if (e.Type == type) return e.Name;
+            return "?";
+        }
+
+        /// <summary>Returns a random base potion type (from the 3 starter recipes).</summary>
+        public static PotionType GetRandomPotion()
+        {
+            var starters = new[] { PotionType.Flame, PotionType.Stream, PotionType.Poison };
+            return starters[UnityEngine.Random.Range(0, starters.Length)];
+        }
+
         /// <summary>Short two-letter element abbreviation for display in the recipe book.</summary>
         public static string ElementAbbr(ElementType e) => e switch
         {

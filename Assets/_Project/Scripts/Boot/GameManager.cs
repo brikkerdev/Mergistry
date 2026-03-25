@@ -27,8 +27,9 @@ namespace Mergistry.Boot
         private DistillationState _distillationState;
         private MenuState         _menuState;
         private ResultState       _resultState;
-        private MapState          _mapState;    // A4
-        private EventState        _eventState;  // A4
+        private MapState          _mapState;          // A4
+        private EventState        _eventState;        // A4
+        private RelicChoiceState  _relicChoiceState;  // A5
 
         // ── Dev access ────────────────────────────────────────────────────────
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -41,6 +42,7 @@ namespace Mergistry.Boot
         public ResultState       DevResultState        => _resultState;
         public MapState          DevMapState           => _mapState;
         public EventState        DevEventState         => _eventState;
+        public RelicChoiceState  DevRelicChoiceState   => _relicChoiceState;
 #endif
 
         private void Awake()  => Debug.Log("[GameManager] Awake");
@@ -97,6 +99,19 @@ namespace Mergistry.Boot
             if (healthBarView != null) healthBarView.gameObject.SetActive(false);
 
             // ── Services ──────────────────────────────────────────────────────
+            // A5: relicService must be created first so it can be injected into combat services
+            if (!ServiceLocator.TryGet<IRelicService>(out var relicService))
+            {
+                relicService = new RelicService();
+                ServiceLocator.Register<IRelicService>(relicService);
+            }
+
+            if (!ServiceLocator.TryGet<ILootService>(out var lootService))
+            {
+                lootService = new LootService();
+                ServiceLocator.Register<ILootService>(lootService);
+            }
+
             if (!ServiceLocator.TryGet<IDistillationService>(out var distillationService))
             {
                 distillationService = new DistillationService();
@@ -104,12 +119,12 @@ namespace Mergistry.Boot
             }
             if (!ServiceLocator.TryGet<ICombatService>(out var combatService))
             {
-                combatService = new CombatService();
+                combatService = new CombatService(relicService); // A5: inject relicService
                 ServiceLocator.Register<ICombatService>(combatService);
             }
             if (!ServiceLocator.TryGet<IDamageService>(out var damageService))
             {
-                damageService = new DamageService();
+                damageService = new DamageService(relicService); // A5: inject relicService
                 ServiceLocator.Register<IDamageService>(damageService);
             }
             if (!ServiceLocator.TryGet<IAIService>(out var aiService))
@@ -123,6 +138,7 @@ namespace Mergistry.Boot
             // ── Models ────────────────────────────────────────────────────────
             _inventory = new InventoryModel();
             _runModel  = new RunModel();
+            relicService.SetModel(_runModel.Relics);
             inventoryView.Refresh(_inventory);
 
             // ── Programmatic screen objects ────────────────────────────────────
@@ -134,6 +150,13 @@ namespace Mergistry.Boot
 
             var eventScreenGo = new GameObject("EventScreen"); // A4
             var eventScreen   = eventScreenGo.AddComponent<EventScreenView>();
+
+            var relicChoiceScreenGo = new GameObject("RelicChoiceScreen"); // A5
+            var relicChoiceScreen   = relicChoiceScreenGo.AddComponent<RelicChoiceScreenView>();
+
+            var relicBarGo = new GameObject("RelicBar"); // A5
+            relicBarGo.transform.position = new Vector3(0f, 3.6f, -0.5f);
+            var relicBarView = relicBarGo.AddComponent<RelicBarView>();
 
             // ── States ────────────────────────────────────────────────────────
             _combatState = new CombatState(
@@ -147,10 +170,11 @@ namespace Mergistry.Boot
                 boardView, dragController, distillationService,
                 actionCounter, inventoryView, replacePopup, _inventory,
                 _fsm, _combatState, fadeView,
-                _runModel, bookScreen);
+                _runModel, bookScreen, relicService); // A5: pass relicService for Cube relic
 
             // EventState constructed before MapState (both reference each other via Set methods)
-            _eventState = new EventState(eventScreen, _fsm, fadeView);
+            _eventState = new EventState(eventScreen, _fsm, fadeView,
+                _runModel, _inventory, relicService, lootService);
 
             _mapState = new MapState(
                 mapScreen, mapGeneratorService,
@@ -158,6 +182,10 @@ namespace Mergistry.Boot
                 _distillationState, _eventState);
 
             _eventState.SetMapState(_mapState); // wire back-reference
+
+            _relicChoiceState = new RelicChoiceState( // A5
+                relicChoiceScreen, _fsm, fadeView, relicService);
+            _relicChoiceState.SetMapState(_mapState);
 
             _menuState = new MenuState(menuScreenView, _fsm, _mapState, fadeView); // A4: goes to map
 
@@ -167,8 +195,10 @@ namespace Mergistry.Boot
                 _resultState.SetNavigationTargets(_menuState, _mapState); // A4: retry → map
             }
 
-            // Wire flow dependencies into CombatState (A4: victory → mapState)
-            _combatState.SetFlowDependencies(_fsm, _runModel, healthBarView, _mapState, _resultState);
+            // Wire flow dependencies into CombatState (A4: victory → mapState; A5: relic flow)
+            _combatState.SetFlowDependencies(
+                _fsm, _runModel, healthBarView, _mapState, _resultState,
+                relicService, relicBarView, _relicChoiceState); // A5
 
             // Wire result state into MapState (for game-win path)
             _mapState.SetResultState(_resultState);

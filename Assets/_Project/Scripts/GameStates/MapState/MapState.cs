@@ -67,7 +67,7 @@ namespace Mergistry.GameStates
             }
 
             _mapScreen.OnNodeClicked += HandleNodeClicked;
-            _mapScreen.Show(_runModel.FloorMap, _runModel.CurrentFloor);
+            _mapScreen.Show(_runModel.FloorMap, _runModel.CurrentFloor, _runModel.CurrentNodeId);
             _fadeView?.FadeIn(0.2f, null);
 
             Debug.Log($"[MapState] Enter — floor={_runModel.CurrentFloor}, " +
@@ -94,12 +94,20 @@ namespace Mergistry.GameStates
             var node = map.GetNode(_runModel.CurrentNodeId);
             if (node == null || node.IsVisited) return;
 
-            // Mark visited and unlock successors
+            // Mark visited; lock all other unvisited accessible nodes, then unlock successors
             node.IsVisited = true;
+
+            foreach (var n in map.Nodes)
+            {
+                if (!n.IsVisited)
+                    n.IsAccessible = false;
+            }
+
             foreach (int nextId in node.NextNodeIds)
             {
                 var next = map.GetNode(nextId);
-                if (next != null) next.IsAccessible = true;
+                if (next != null && !next.IsVisited)
+                    next.IsAccessible = true;
             }
 
             // Boss node means floor transition or victory

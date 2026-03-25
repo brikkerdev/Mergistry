@@ -59,13 +59,13 @@ namespace Mergistry.UI.Screens
 
             // Title TextMesh
             _titleText = MakeLabel("Title", transform,
-                new Vector3(0f, 1.4f, -0.1f), 0.040f, 72);
+                new Vector3(0f, 1.4f, -0.1f), 0.040f, 150);
             _titleText.text  = "Результат";
             _titleText.color = new Color(0.95f, 0.90f, 0.60f);
 
             // Subtitle TextMesh
             _subtitleText = MakeLabel("Subtitle", transform,
-                new Vector3(0f, 0.65f, -0.1f), 0.022f, 48);
+                new Vector3(0f, 0.65f, -0.1f), 0.022f, 150);
             _subtitleText.text  = "";
             _subtitleText.color = new Color(0.70f, 0.70f, 0.88f);
 
@@ -101,7 +101,7 @@ namespace Mergistry.UI.Screens
 
             // Label
             var lbl = MakeLabel("Label", btn.transform,
-                new Vector3(0f, 0f, -0.01f), 0.020f, 56);
+                new Vector3(0f, 0f, -0.01f), 0.020f, 150);
             lbl.text  = label;
             lbl.color = Color.white;
 

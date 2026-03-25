@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Mergistry.Core;
+using Mergistry.Data;
 using Mergistry.Events;
 using Mergistry.Models;
 using Mergistry.Models.Combat;
@@ -10,6 +11,10 @@ namespace Mergistry.Services
 {
     public class CombatService : ICombatService
     {
+        private readonly IRelicService _relicService;
+
+        public CombatService(IRelicService relicService) { _relicService = relicService; }
+
         // ── Init ────────────────────────────────────────────────────────────────
 
         /// <summary>Returns a fresh combat model with the player placed at (1,1).</summary>
@@ -23,103 +28,61 @@ namespace Mergistry.Services
         }
 
         /// <summary>
-        /// Spawns enemies for the given fight index:
-        /// 0 → 1 Skeleton;  1 → 2 Skeletons;  2 → 1 Skeleton + 1 Spider;
-        /// 3 → 1 MushroomBomb + 2 Skeletons;
-        /// 4 → 1 MagnetGolem;
-        /// 5 → 1 ArmoredBeetle.
-        /// A3:
-        /// 6 → 1 MirrorSlime + 1 Skeleton;
-        /// 7 → 1 Phantom;
-        /// 8 → 1 Necromancer + 2 Skeletons;
-        /// 9 → 1 MirrorSlime + 1 Phantom + 1 Necromancer.
+        /// Spawns enemies from a procedurally generated CombatSetup.
+        /// Positions are distributed across the grid to avoid overlap.
         /// </summary>
-        public void SpawnEnemies(CombatModel model, int fightIndex)
+        public void SpawnEnemies(CombatModel model, CombatSetup setup)
         {
-            switch (fightIndex)
+            if (setup == null || setup.Enemies.Count == 0)
             {
-                case 0:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    break;
-                case 1:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(1, 3), hp: 3));
-                    break;
-                case 2:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Spider,
-                                                           new Vector2Int(4, 1), hp: 2));
-                    break;
-                case 3:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MushroomBomb,
-                                                           new Vector2Int(2, 4), hp: 2, bombTimer: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(1, 3), hp: 3));
-                    break;
-                case 4:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MagnetGolem,
-                                                           new Vector2Int(3, 3), hp: 6));
-                    break;
-                case 5:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.ArmoredBeetle,
-                                                           new Vector2Int(3, 3), hp: 4, armorPoints: 2));
-                    break;
-                // A3 test fights
-                case 6:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MirrorSlime,
-                                                           new Vector2Int(3, 3), hp: 4));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(1, 3), hp: 3));
-                    break;
-                case 7:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
-                                                           new Vector2Int(4, 4), hp: 2));
-                    break;
-                case 8:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
-                                                           new Vector2Int(3, 4), hp: 5));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(1, 3), hp: 3));
-                    break;
-                case 9:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MirrorSlime,
-                                                           new Vector2Int(3, 2), hp: 4));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
-                                                           new Vector2Int(4, 4), hp: 2));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
-                                                           new Vector2Int(2, 4), hp: 5));
-                    break;
-                // A4: Elite fight (3 enemies, harder)
-                case 10:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.ArmoredBeetle,
-                                                           new Vector2Int(3, 3), hp: 5, armorPoints: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(1, 3), hp: 3));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 1), hp: 3));
-                    break;
-                // A4: Boss fight placeholder (mix of A3 enemies)
-                case 11:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MirrorSlime,
-                                                           new Vector2Int(3, 2), hp: 6));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
-                                                           new Vector2Int(4, 4), hp: 4));
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
-                                                           new Vector2Int(2, 4), hp: 7));
-                    break;
-                default:
-                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
-                                                           new Vector2Int(3, 3), hp: 3));
-                    break;
+                model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                       new Vector2Int(3, 3), hp: 3));
+                return;
             }
+
+            var positions = GetSpawnPositions(setup.Enemies.Count, model.Player.Position);
+
+            for (int i = 0; i < setup.Enemies.Count; i++)
+            {
+                var info = setup.Enemies[i];
+                var pos  = i < positions.Count ? positions[i] : new Vector2Int(3, 3);
+                model.Enemies.Add(new EnemyCombatModel(
+                    model.NextEntityId(), info.Type, pos,
+                    hp: info.HP, armorPoints: info.ArmorPoints, bombTimer: info.BombTimer));
+            }
+        }
+
+        /// <summary>
+        /// Returns spawn positions distributed in the far half of the 5x5 grid,
+        /// away from the player start position. No two enemies on the same cell.
+        /// </summary>
+        private static List<Vector2Int> GetSpawnPositions(int count, Vector2Int playerPos)
+        {
+            // Candidate cells: prefer rows 2-4, columns 1-4 (away from player at 1,1)
+            var candidates = new List<Vector2Int>
+            {
+                new Vector2Int(3, 3),
+                new Vector2Int(1, 3),
+                new Vector2Int(3, 1),
+                new Vector2Int(4, 4),
+                new Vector2Int(2, 4),
+                new Vector2Int(4, 2),
+                new Vector2Int(0, 3),
+                new Vector2Int(3, 0),
+            };
+
+            // Remove player position
+            candidates.RemoveAll(c => c == playerPos);
+
+            var result = new List<Vector2Int>();
+            for (int i = 0; i < count && i < candidates.Count; i++)
+                result.Add(candidates[i]);
+
+            // Fallback if we need more positions than candidates
+            while (result.Count < count)
+                result.Add(new Vector2Int(3, 3));
+
+            return result;
         }
 
         // ── Movement ────────────────────────────────────────────────────────────
@@ -174,6 +137,17 @@ namespace Mergistry.Services
             if (slot == null || slot.IsEmpty || slot.CooldownRemaining > 0) return false;
 
             slot.CooldownRemaining = slot.Level >= 3 ? 1 : 2;
+
+            // A5: Thermos — 25% chance to not consume cooldown
+            if (_relicService != null && _relicService.HasRelic(RelicType.Thermos))
+            {
+                if (Random.value < 0.25f)
+                {
+                    slot.CooldownRemaining = 0;
+                    Debug.Log("[CombatService] Thermos activated — cooldown preserved!");
+                }
+            }
+
             model.Player.HasActed  = true;
 
             // A3: track last thrown potion for MirrorSlime

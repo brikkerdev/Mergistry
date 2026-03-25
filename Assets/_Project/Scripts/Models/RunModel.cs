@@ -13,7 +13,11 @@ namespace Mergistry.Models
         public int          CurrentFight    { get; set; } = 0;   // increments each combat victory
         public int          CurrentFloor    { get; set; } = 0;   // 0,1,2 — controls element pool (3/4/5)
         public int          PersistentHP    { get; set; } = 5;
+        public int          MaxHP           { get; set; } = 5;
         public bool         LastVictory     { get; set; } = false;
+
+        // A5: relics
+        public RelicModel   Relics          { get; private set; } = new RelicModel();
 
         // A4: map navigation
         public FloorMapModel FloorMap       { get; set; } = null;
@@ -25,10 +29,12 @@ namespace Mergistry.Models
             CurrentFight    = 0;
             CurrentFloor    = 0;
             PersistentHP    = 5;
+            MaxHP           = 5;
             LastVictory     = false;
             FloorMap        = null;
             CurrentNodeId   = -1;
             CurrentNodeType = MapNodeType.Combat;
+            Relics.Clear();
         }
     }
 }

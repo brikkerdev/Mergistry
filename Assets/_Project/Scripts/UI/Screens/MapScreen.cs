@@ -25,10 +25,10 @@ namespace Mergistry.UI.Screens
 
         // ── Public API ────────────────────────────────────────────────────────
 
-        public void Show(FloorMapModel map, int floor)
+        public void Show(FloorMapModel map, int floor, int currentNodeId = -1)
         {
             Clear();
-            RenderMap(map, floor);
+            RenderMap(map, floor, currentNodeId);
             gameObject.SetActive(true);
         }
 
@@ -47,7 +47,7 @@ namespace Mergistry.UI.Screens
             _built.Clear();
         }
 
-        private void RenderMap(FloorMapModel map, int floor)
+        private void RenderMap(FloorMapModel map, int floor, int currentNodeId)
         {
             // ── Background ────────────────────────────────────────────────────
             _built.Add(MakeQuadGo("Overlay", transform, Vector3.zero,
@@ -55,17 +55,10 @@ namespace Mergistry.UI.Screens
 
             // ── Title ─────────────────────────────────────────────────────────
             var title = MakeLabelGo("Title", transform,
-                new Vector3(0f, 3.1f, -0.1f), 0.035f, 72);
+                new Vector3(0f, 3.1f, -0.1f), 0.035f, 150);
             title.GetComponent<TextMesh>().text  = $"Этаж {floor + 1}";
             title.GetComponent<TextMesh>().color = new Color(0.9f, 0.85f, 0.5f);
             _built.Add(title);
-
-            // ── "YOU ARE HERE" at the entrance ────────────────────────────────
-            var here = MakeLabelGo("Here", transform,
-                new Vector3(0f, BottomY - 0.6f, -0.1f), 0.018f, 38);
-            here.GetComponent<TextMesh>().text  = "▲  ТЫ ЗДЕСЬ";
-            here.GetComponent<TextMesh>().color = new Color(0.55f, 0.9f, 0.55f);
-            _built.Add(here);
 
             // ── Calculate world positions ─────────────────────────────────────
             var positions = new Dictionary<int, Vector3>();
@@ -91,6 +84,24 @@ namespace Mergistry.UI.Screens
             // ── Nodes ─────────────────────────────────────────────────────────
             foreach (var node in map.Nodes)
                 _built.Add(BuildNode(node, positions[node.Id]));
+
+            // ── "YOU ARE HERE" marker ───────────────────────────────────────
+            Vector3 herePos;
+            if (currentNodeId >= 0 && positions.ContainsKey(currentNodeId))
+            {
+                // Place below the last completed node
+                herePos = positions[currentNodeId] + new Vector3(0f, -0.6f, 0f);
+            }
+            else
+            {
+                // At entrance (below row 0)
+                herePos = new Vector3(0f, BottomY - 0.6f, -0.1f);
+            }
+
+            var here = MakeLabelGo("Here", transform, herePos, 0.018f, 150);
+            here.GetComponent<TextMesh>().text  = "▲  ТЫ ЗДЕСЬ";
+            here.GetComponent<TextMesh>().color = new Color(0.55f, 0.9f, 0.55f);
+            _built.Add(here);
         }
 
         private GameObject BuildPath(Vector3 from, Vector3 to)
@@ -147,7 +158,7 @@ namespace Mergistry.UI.Screens
 
             // Icon line
             var iconGo = MakeLabelGo("Icon", go.transform,
-                new Vector3(0f, 0.10f, -0.05f), 0.024f, 44);
+                new Vector3(0f, 0.10f, -0.05f), 0.024f, 150);
             var iconTm = iconGo.GetComponent<TextMesh>();
             iconTm.text  = visited ? "OK" : NodeIcon(node.Type);
             iconTm.color = active ? Color.white
@@ -156,7 +167,7 @@ namespace Mergistry.UI.Screens
 
             // Name line (small)
             var nameGo = MakeLabelGo("Name", go.transform,
-                new Vector3(0f, -0.14f, -0.05f), 0.013f, 26);
+                new Vector3(0f, -0.14f, -0.05f), 0.013f, 150);
             var nameTm = nameGo.GetComponent<TextMesh>();
             nameTm.text  = visited ? "" : NodeName(node.Type);
             nameTm.color = active ? new Color(0.68f, 0.72f, 0.88f)

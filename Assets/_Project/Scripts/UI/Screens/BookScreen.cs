@@ -31,9 +31,9 @@ namespace Mergistry.UI.Screens
         private const float ScaleMd  = 0.016f; // section header / entry name
         private const float ScaleSm  = 0.013f; // entry details
 
-        private const int   FntLg    = 120;
-        private const int   FntMd    = 100;
-        private const int   FntSm    = 80;
+        private const int   FntLg    = 150;
+        private const int   FntMd    = 150;
+        private const int   FntSm    = 150;
 
         // ── Pages ─────────────────────────────────────────────────────────────
         private static readonly string[] PageTitles =
