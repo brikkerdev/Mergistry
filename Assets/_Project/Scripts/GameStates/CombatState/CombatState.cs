@@ -33,7 +33,7 @@ namespace Mergistry.GameStates
         // ── Flow dependencies ──────────────────────────────────────────────────
         private RunModel          _runModel;
         private HealthBarView     _healthBarView;
-        private DistillationState _distillationState;
+        private MapState          _mapState;          // A4: victory goes to map
         private ResultState       _resultState;
         private GameStateMachine  _fsm;
 
@@ -78,14 +78,14 @@ namespace Mergistry.GameStates
             GameStateMachine  fsm,
             RunModel          runModel,
             HealthBarView     healthBarView,
-            DistillationState distillationState,
+            MapState          mapState,          // A4
             ResultState       resultState)
         {
-            _fsm               = fsm;
-            _runModel          = runModel;
-            _healthBarView     = healthBarView;
-            _distillationState = distillationState;
-            _resultState       = resultState;
+            _fsm           = fsm;
+            _runModel      = runModel;
+            _healthBarView = healthBarView;
+            _mapState      = mapState;
+            _resultState   = resultState;
         }
 
         // ── Dev tools ─────────────────────────────────────────────────────────
@@ -204,7 +204,14 @@ namespace Mergistry.GameStates
             if (_runModel != null)
                 _model.Player.HP = _runModel.PersistentHP;
 
-            _combatService.SpawnEnemies(_model, _runModel?.CurrentFight ?? 0);
+            // A4: choose fight index based on node type
+            int fightIndex = Mathf.Clamp(_runModel?.CurrentFight ?? 0, 0, 9);
+            if (_runModel?.CurrentNodeType == MapNodeType.Elite)
+                fightIndex = 10;
+            else if (_runModel?.CurrentNodeType == MapNodeType.Boss)
+                fightIndex = 11;
+
+            _combatService.SpawnEnemies(_model, fightIndex);
             _selectedSlot = -1;
             _phase        = TurnPhase.PlayerTurn;
 
@@ -664,9 +671,8 @@ namespace Mergistry.GameStates
             _runModel.PersistentHP = _model.Player.HP;
             _runModel.CurrentFight++;
 
-            // Always go back to distillation for now (no run-end condition during Alpha testing)
-            _runModel.LastVictory = false;
-            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_distillationState));
+            // A4: return to map so it can mark the node visited and unlock successors
+            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_mapState));
         }
 
         private void OnCombatDefeat()

@@ -69,10 +69,15 @@
     <Compile Include="Assets\_Project\Scripts\UI\HUD\InventoryView.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyCombatModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\CombatService\CombatService.cs" />
+    <Compile Include="Assets\_Project\Scripts\Data\Enums\MapNodeType.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Inventory\PotionSlot.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\PotionDatabase.cs" />
+    <Compile Include="Assets\_Project\Scripts\Services\MapGeneratorService\MapGeneratorService.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Map\FloorMapModel.cs" />
     <Compile Include="Assets\_Project\Scripts\UI\Screens\MenuScreenView.cs" />
+    <Compile Include="Assets\_Project\Scripts\Models\Map\MapNode.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\IntentType.cs" />
+    <Compile Include="Assets\_Project\Scripts\GameStates\EventState\EventState.cs" />
     <Compile Include="Assets\_Project\Scripts\Debug\DevPanel.cs" />
     <Compile Include="Assets\_Project\Scripts\Core\StateMachine\IGameState.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Distillation\CellContent.cs" />
@@ -81,8 +86,11 @@
     <Compile Include="Assets\_Project\Scripts\Models\Combat\GridModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\PlayerCombatModel.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\GridView.cs" />
+    <Compile Include="Assets\_Project\Scripts\GameStates\MapState\MapState.cs" />
     <Compile Include="Assets\_Project\Scripts\Data\Enums\ElementType.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\Screens\MapScreen.cs" />
     <Compile Include="Assets\_Project\Scripts\Services\DamageService\DamageService.cs" />
+    <Compile Include="Assets\_Project\Scripts\UI\Screens\EventScreenView.cs" />
     <Compile Include="Assets\_Project\Scripts\Views\Combat\ZoneOverlayView.cs" />
     <Compile Include="Assets\_Project\Scripts\Boot\GameManager.cs" />
     <Compile Include="Assets\_Project\Scripts\Models\Combat\EnemyIntent.cs" />

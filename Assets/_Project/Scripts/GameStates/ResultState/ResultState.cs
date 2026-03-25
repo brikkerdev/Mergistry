@@ -19,8 +19,8 @@ namespace Mergistry.GameStates
         private readonly InventoryModel   _inventory;
 
         // Wired after all states are constructed (avoids constructor circular dependency).
-        private MenuState         _menuState;
-        private DistillationState _distillationState;
+        private MenuState _menuState;
+        private MapState  _mapState; // A4: retry goes to map
 
         public ResultState(
             ResultScreenView view,
@@ -37,10 +37,10 @@ namespace Mergistry.GameStates
         }
 
         /// <summary>Call from GameManager after all states are built.</summary>
-        public void SetNavigationTargets(MenuState menuState, DistillationState distillationState)
+        public void SetNavigationTargets(MenuState menuState, MapState mapState)
         {
-            _menuState         = menuState;
-            _distillationState = distillationState;
+            _menuState = menuState;
+            _mapState  = mapState;
         }
 
         // ── IGameState ───────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ namespace Mergistry.GameStates
         {
             _runModel.Reset();
             _inventory.Clear();
-            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_distillationState));
+            _fadeView.FadeOut(0.2f, () => _fsm.ChangeState(_mapState));
         }
 
         private void OnMenu()

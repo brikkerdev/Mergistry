@@ -97,6 +97,24 @@ namespace Mergistry.Services
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
                                                            new Vector2Int(2, 4), hp: 5));
                     break;
+                // A4: Elite fight (3 enemies, harder)
+                case 10:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.ArmoredBeetle,
+                                                           new Vector2Int(3, 3), hp: 5, armorPoints: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(1, 3), hp: 3));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
+                                                           new Vector2Int(3, 1), hp: 3));
+                    break;
+                // A4: Boss fight placeholder (mix of A3 enemies)
+                case 11:
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.MirrorSlime,
+                                                           new Vector2Int(3, 2), hp: 6));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Phantom,
+                                                           new Vector2Int(4, 4), hp: 4));
+                    model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Necromancer,
+                                                           new Vector2Int(2, 4), hp: 7));
+                    break;
                 default:
                     model.Enemies.Add(new EnemyCombatModel(model.NextEntityId(), EnemyType.Skeleton,
                                                            new Vector2Int(3, 3), hp: 3));
